@@ -1,0 +1,21 @@
+{
+  "manifest_version": 3,
+  "name": "Pulihku Safe Browse",
+  "version": "1.0",
+  "description": "Ekstensi pendamping Pulihku untuk memblokir pemicu dan situs dewasa di tingkat browser.",
+  "permissions": [
+    "declarativeNetRequest"
+  ],
+  "declarative_net_request": {
+    "rule_resources": [
+      {
+        "id": "ruleset_1",
+        "enabled": true,
+        "path": "rules.json"
+      }
+    ]
+  },
+  "action": {
+    "default_title": "Pulihku Safe Browse Aktif"
+  }
+}

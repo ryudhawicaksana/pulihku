@@ -26,6 +26,8 @@ export default function Onboarding() {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [authError, setAuthError] = useState("");
+  const [finishError, setFinishError] = useState("");
+  const [isFinishing, setIsFinishing] = useState(false);
   const [answers, setAnswers] = useState<Record<string, string | string[]>>({});
 
   const questions = [
@@ -164,8 +166,14 @@ export default function Onboarding() {
     }
   };
 
-  const finishOnboarding = () => {
-    login(name || "Pejuang", answers);
+  const finishOnboarding = async () => {
+    setIsFinishing(true);
+    setFinishError("");
+    const res = await login(name || "Pejuang", answers);
+    setIsFinishing(false);
+    if (res && !res.success) {
+      setFinishError(res.error || "Gagal menyimpan program pemulihan.");
+    }
   };
 
   return (
@@ -478,8 +486,17 @@ export default function Onboarding() {
                     </li>
                   </ul>
 
-                  <Button size="lg" className="w-full rounded-xl py-6 text-lg shadow-xl shadow-primary/20" onClick={finishOnboarding}>
-                    Mulai Program Pemulihan
+                  {finishError && (
+                    <p className="text-destructive text-sm font-semibold text-center mb-4">{finishError}</p>
+                  )}
+
+                  <Button 
+                    size="lg" 
+                    className="w-full rounded-xl py-6 text-lg shadow-xl shadow-primary/20" 
+                    onClick={finishOnboarding}
+                    disabled={isFinishing}
+                  >
+                    {isFinishing ? "Menyimpan Program..." : "Mulai Program Pemulihan"}
                   </Button>
                 </CardContent>
               </Card>

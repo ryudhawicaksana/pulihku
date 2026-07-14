@@ -17,7 +17,7 @@ type UserData = {
 
 type UserContextType = {
   user: UserData | null;
-  login: (name: string, answers?: Record<string, string | string[]>) => Promise<void>;
+  login: (name: string, answers?: Record<string, string | string[]>) => Promise<{ success: boolean; error?: string }>;
   signUpWithEmailPassword: (email: string, password: string, name: string, age: number) => Promise<{ success: boolean; error?: string }>;
   signInWithEmailPassword: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
@@ -147,7 +147,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.user) {
       console.error("No authenticated user found.");
-      return;
+      return { success: false, error: "Sesi tidak ditemukan. Silakan login kembali." };
     }
 
     const id = session.user.id;
@@ -171,7 +171,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
     if (error) {
       console.error("Error saving to Supabase:", error);
-      return;
+      return { success: false, error: error.message };
     }
 
     const newUser: UserData = {
@@ -187,6 +187,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem("pulihku_user", JSON.stringify(newUser));
     setUser(newUser);
     router.push("/");
+    return { success: true };
   };
 
   const logout = async () => {

@@ -1,35 +1,36 @@
 export function getRankDetails(xp: number = 0, streak: number = 0) {
   // Ranks based on XP (productivity) and Streak (clean recovery days)
+  // XP requirements are made significantly larger to keep users motivated
   let rankName = "Benih";
   let badge = "🌱";
   let nextRank = "Tunas";
-  let nextRankXp = 100;
+  let nextRankXp = 250;
   let prevRankXp = 0;
   
-  if (xp >= 1000 || streak >= 365) {
+  if (xp >= 5000 || streak >= 365) {
     rankName = "Hutan Raksasa";
     badge = "🌳🌳";
     nextRank = "Maksimum";
-    nextRankXp = 1000;
-    prevRankXp = 1000;
-  } else if (xp >= 600 || streak >= 91) {
+    nextRankXp = 5000;
+    prevRankXp = 5000;
+  } else if (xp >= 2500 || streak >= 91) {
     rankName = "Pohon Kokoh";
     badge = "🌳";
     nextRank = "Hutan Raksasa";
-    nextRankXp = 1000;
-    prevRankXp = 600;
-  } else if (xp >= 300 || streak >= 31) {
+    nextRankXp = 5000;
+    prevRankXp = 2500;
+  } else if (xp >= 1000 || streak >= 31) {
     rankName = "Akar Kuat";
     badge = "🪵";
     nextRank = "Pohon Kokoh";
-    nextRankXp = 600;
-    prevRankXp = 300;
-  } else if (xp >= 100 || streak >= 8) {
+    nextRankXp = 2500;
+    prevRankXp = 1000;
+  } else if (xp >= 250 || streak >= 8) {
     rankName = "Tunas";
     badge = "🌿";
     nextRank = "Akar Kuat";
-    nextRankXp = 300;
-    prevRankXp = 100;
+    nextRankXp = 1000;
+    prevRankXp = 250;
   }
   
   const currentXpInLevel = xp - prevRankXp;

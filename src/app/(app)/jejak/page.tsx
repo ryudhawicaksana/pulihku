@@ -44,6 +44,21 @@ export default function JejakPulih() {
   const totalRelapse = user?.relapseCount || 0;
   const successRate = Math.max(0, 100 - (totalRelapse * 4));
   
+  // Brain Recovery Goal logic based on user answers
+  const frequency = user?.answers?.frequency as string || "weekly";
+  const history = user?.answers?.history as string || "first_time";
+
+  let targetDays = 60;
+  if (frequency === "daily" || history === "tried_failed") {
+    targetDays = 90;
+  } else if (frequency === "weekly" || history === "long_streak") {
+    targetDays = 60;
+  } else {
+    targetDays = 30;
+  }
+
+  const recoveryScore = Math.min(100, Math.round((streak / targetDays) * 100));
+
   // Fake chart data for the progress line
   const lineChartData = [
     { name: "Day 1", value: 10 },
@@ -187,13 +202,24 @@ export default function JejakPulih() {
             </div>
           </div>
 
-          {/* AI Therapist Button */}
-          <button className="w-full bg-[#1a1a1c] hover:bg-[#252528] transition-colors rounded-2xl p-4 flex items-center gap-3 border border-white/5 mb-8">
-            <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center">
-              <UserIcon className="w-4 h-4 text-white/70" />
-            </div>
-            <span className="text-sm text-white/60">Speak to Melius your AI Therapist...</span>
-          </button>
+          {/* Recovery Score Card */}
+          <Card className="border border-border/80 shadow-sm rounded-3xl mb-8">
+            <CardContent className="p-6 flex flex-col justify-center">
+              <div className="flex justify-between items-center mb-3">
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <Activity className="w-5 h-5 text-primary" />
+                  <h3 className="font-bold text-sm text-foreground">Recovery Score</h3>
+                </div>
+                <span className="font-bold text-primary text-base">{recoveryScore}/100</span>
+              </div>
+              <div className="w-full bg-secondary h-3 rounded-full overflow-hidden border border-border/40">
+                <div className="bg-primary h-full transition-all duration-500 rounded-full" style={{ width: `${recoveryScore}%` }} />
+              </div>
+              <p className="text-xs text-muted-foreground mt-3 leading-relaxed">
+                Skor pemulihan Anda meningkat seiring bertambahnya hari bersih berdasarkan target pemulihan otak Anda ({targetDays} Hari).
+              </p>
+            </CardContent>
+          </Card>
 
           {/* Progress Chart */}
           <div className="flex-1">

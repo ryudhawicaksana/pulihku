@@ -203,7 +203,7 @@ export default function Onboarding() {
               className="text-center space-y-6 w-full max-w-xl mx-auto flex flex-col items-center"
             >
               <div className="flex items-center justify-center mx-auto mb-8">
-                <Logo className="w-20 h-20" />
+                <Logo className="text-5xl" />
               </div>
               <h1 className="text-4xl font-bold tracking-tight text-center">Selamat Datang di Pulihku</h1>
               

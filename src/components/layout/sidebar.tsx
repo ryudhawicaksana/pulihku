@@ -38,8 +38,7 @@ export function Sidebar() {
   return (
     <aside className="hidden md:flex flex-col w-64 border-r border-border bg-card px-4 pt-6 pb-10 h-screen sticky top-0 overflow-y-auto">
       <div className="flex items-center gap-3 px-2 mb-8">
-        <Logo className="w-8 h-8" />
-        <h1 className="font-bold text-xl tracking-tight text-foreground">Pulihku</h1>
+        <Logo />
       </div>
       
       <nav className="flex flex-col gap-2">

@@ -11,14 +11,15 @@ type UserData = {
   hasCompletedOnboarding: boolean;
   relapseCount: number;
   avatar?: string;
+  age?: number;
   answers?: Record<string, string | string[]>;
 };
 
 type UserContextType = {
   user: UserData | null;
   login: (name: string, answers?: Record<string, string | string[]>) => Promise<void>;
-  sendOtpCode: (email: string) => Promise<{ success: boolean; error?: string }>;
-  verifyOtpCode: (email: string, token: string) => Promise<{ success: boolean; error?: string }>;
+  signUpWithEmailPassword: (email: string, password: string, name: string, age: number) => Promise<{ success: boolean; error?: string }>;
+  signInWithEmailPassword: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
   recordRelapse: () => void;
   updateProfile: (name: string, avatar: string) => void;
@@ -44,7 +45,8 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         .eq("id", session.user.id)
         .single();
       
-      if (data) {
+      const hasAnswers = data?.answers && Object.keys(data.answers).length > 0;
+      if (data && hasAnswers) {
         const userData: UserData = {
           id: data.id,
           name: data.name,
@@ -52,6 +54,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
           hasCompletedOnboarding: true,
           relapseCount: data.relapse_count,
           avatar: data.avatar,
+          age: data.age,
           answers: data.answers,
         };
         setUser(userData);
@@ -92,31 +95,49 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     }
   }, [user, pathname, isLoading, router]);
 
-  const sendOtpCode = async (email: string): Promise<{ success: boolean; error?: string }> => {
-    const origin = typeof window !== "undefined" ? window.location.origin : "";
-    const { error } = await supabase.auth.signInWithOtp({
+  const signUpWithEmailPassword = async (email: string, password: string, name: string, age: number): Promise<{ success: boolean; error?: string }> => {
+    const { data: authData, error: authError } = await supabase.auth.signUp({
       email,
-      options: {
-        emailRedirectTo: `${origin}/onboarding`,
-      }
+      password,
     });
 
-    if (error) {
-      console.error("Error sending OTP:", error);
-      return { success: false, error: error.message };
+    if (authError) {
+      console.error("Error signing up:", authError);
+      return { success: false, error: authError.message };
     }
+
+    if (!authData.user) {
+      return { success: false, error: "Gagal membuat pengguna." };
+    }
+
+    const id = authData.user.id;
+    const startDate = new Date().toISOString();
+    const { error: profileError } = await supabase.from("users_pemulihan").insert({
+      id,
+      name,
+      age,
+      start_date: startDate,
+      relapse_count: 0,
+      avatar: "🌱",
+      answers: {},
+    });
+
+    if (profileError) {
+      console.error("Error saving profile:", profileError);
+      return { success: false, error: profileError.message };
+    }
+
     return { success: true };
   };
 
-  const verifyOtpCode = async (email: string, token: string): Promise<{ success: boolean; error?: string }> => {
-    const { error } = await supabase.auth.verifyOtp({
+  const signInWithEmailPassword = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
+    const { error } = await supabase.auth.signInWithPassword({
       email,
-      token,
-      type: "email",
+      password,
     });
 
     if (error) {
-      console.error("Error verifying OTP:", error);
+      console.error("Error signing in:", error);
       return { success: false, error: error.message };
     }
     return { success: true };
@@ -132,9 +153,16 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     const id = session.user.id;
     const startDate = new Date().toISOString();
     
-    const { error } = await supabase.from("users_pemulihan").insert({
+    const { data: currentProfile } = await supabase
+      .from("users_pemulihan")
+      .select("age")
+      .eq("id", id)
+      .single();
+
+    const { error } = await supabase.from("users_pemulihan").upsert({
       id,
       name,
+      age: currentProfile?.age || null,
       start_date: startDate,
       relapse_count: 0,
       avatar: "🌱",
@@ -153,6 +181,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       hasCompletedOnboarding: true,
       relapseCount: 0,
       avatar: "🌱",
+      age: currentProfile?.age || undefined,
       answers,
     };
     localStorage.setItem("pulihku_user", JSON.stringify(newUser));
@@ -207,7 +236,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <UserContext.Provider value={{ user, login, sendOtpCode, verifyOtpCode, logout, recordRelapse, updateProfile, isLoading, isAuthenticated }}>
+    <UserContext.Provider value={{ user, login, signUpWithEmailPassword, signInWithEmailPassword, logout, recordRelapse, updateProfile, isLoading, isAuthenticated }}>
       {/* Jika masih loading atau user belum login (tapi bukan di halaman onboarding), jangan render anak-anak untuk mencegah flash konten */}
       {!isLoading && (user || pathname === "/onboarding") ? children : null}
     </UserContext.Provider>

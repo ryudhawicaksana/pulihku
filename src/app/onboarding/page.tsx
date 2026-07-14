@@ -13,14 +13,18 @@ import { HeartHandshake, Leaf, ArrowRight, ShieldCheck, Sparkles } from "lucide-
 import { useUser } from "@/components/user-provider";
 
 export default function Onboarding() {
-  const { login, sendOtpCode, verifyOtpCode, isAuthenticated } = useUser();
+  const { login, signUpWithEmailPassword, signInWithEmailPassword, isAuthenticated } = useUser();
   const [step, setStep] = useState(0);
+  const [activeTab, setActiveTab] = useState<"login" | "signup">("signup");
   const [name, setName] = useState("");
+  
+  // Form fields
   const [email, setEmail] = useState("");
-  const [otp, setOtp] = useState("");
-  const [otpSent, setOtpSent] = useState(false);
-  const [isSendingOtp, setIsSendingOtp] = useState(false);
-  const [isVerifying, setIsVerifying] = useState(false);
+  const [password, setPassword] = useState("");
+  const [fullName, setFullName] = useState("");
+  const [ageInput, setAgeInput] = useState("");
+
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [authError, setAuthError] = useState("");
   const [answers, setAnswers] = useState<Record<string, string | string[]>>({});
 
@@ -111,29 +115,40 @@ export default function Onboarding() {
     });
   };
 
-  const handleSendOtp = async (e: React.FormEvent) => {
+  const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email.trim()) return;
-    setIsSendingOtp(true);
+    if (!email.trim() || !password.trim() || !fullName.trim() || !ageInput.trim()) return;
+
+    setIsSubmitting(true);
     setAuthError("");
-    const res = await sendOtpCode(email.trim());
-    setIsSendingOtp(false);
+    const age = parseInt(ageInput);
+    if (isNaN(age) || age <= 0) {
+      setAuthError("Masukkan umur yang valid.");
+      setIsSubmitting(false);
+      return;
+    }
+
+    const res = await signUpWithEmailPassword(email.trim(), password.trim(), fullName.trim(), age);
+    setIsSubmitting(false);
+    
     if (res.success) {
-      setOtpSent(true);
+      setName(fullName.trim());
+      setStep(1); // Mulai kuesioner onboarding
     } else {
-      setAuthError(res.error || "Gagal mengirimkan kode OTP. Silakan coba lagi.");
+      setAuthError(res.error || "Gagal melakukan pendaftaran.");
     }
   };
 
-  const handleVerifyOtp = async (e: React.FormEvent) => {
+  const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!otp.trim()) return;
-    setIsVerifying(true);
+    if (!email.trim() || !password.trim()) return;
+
+    setIsSubmitting(true);
     setAuthError("");
-    const res = await verifyOtpCode(email.trim(), otp.trim());
-    setIsVerifying(false);
+    const res = await signInWithEmailPassword(email.trim(), password.trim());
+    setIsSubmitting(false);
     if (!res.success) {
-      setAuthError(res.error || "Kode OTP tidak valid atau kedaluwarsa.");
+      setAuthError(res.error || "Email atau password salah.");
     }
   };
 
@@ -184,65 +199,148 @@ export default function Onboarding() {
               <h1 className="text-4xl font-bold tracking-tight text-center">Selamat Datang di Pulihku</h1>
               
               {!isAuthenticated ? (
-                <>
-                  {!otpSent ? (
-                    <form onSubmit={handleSendOtp} className="w-full max-w-sm mx-auto space-y-4">
-                      <p className="text-xl text-muted-foreground text-center font-normal">
-                        Masukkan email Anda untuk mendaftar atau masuk ke akun Anda.
+                <div className="w-full max-w-sm mx-auto flex flex-col items-center">
+                  
+                  {/* Tab Navigation */}
+                  <div className="flex w-full justify-center border-b border-border mb-6">
+                    <button 
+                      type="button"
+                      className={`flex-1 py-3 text-lg font-medium transition-colors border-b-2 ${activeTab === 'signup' ? 'border-primary text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
+                      onClick={() => { setActiveTab('signup'); setAuthError(''); }}
+                    >
+                      Daftar
+                    </button>
+                    <button 
+                      type="button"
+                      className={`flex-1 py-3 text-lg font-medium transition-colors border-b-2 ${activeTab === 'login' ? 'border-primary text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
+                      onClick={() => { setActiveTab('login'); setAuthError(''); }}
+                    >
+                      Masuk
+                    </button>
+                  </div>
+
+                  {activeTab === 'signup' ? (
+                    <form onSubmit={handleSignUp} className="w-full space-y-4 text-left">
+                      <p className="text-sm text-muted-foreground text-center mb-2">
+                        Silakan buat akun baru untuk memulai program pemulihan.
                       </p>
-                      <Input 
-                        type="email"
-                        placeholder="nama@email.com" 
-                        className="text-center text-lg h-14 rounded-full w-full"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        required
-                        disabled={isSendingOtp}
-                      />
-                      {authError && <p className="text-destructive text-sm font-semibold">{authError}</p>}
+                      
+                      <div className="space-y-1">
+                        <Label htmlFor="fullname">Nama Lengkap</Label>
+                        <Input 
+                          id="fullname"
+                          type="text"
+                          placeholder="Nama Lengkap Anda" 
+                          className="h-12 rounded-xl w-full"
+                          value={fullName}
+                          onChange={(e) => setFullName(e.target.value)}
+                          required
+                          disabled={isSubmitting}
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <Label htmlFor="age-input">Umur</Label>
+                        <Input 
+                          id="age-input"
+                          type="number"
+                          placeholder="Contoh: 22" 
+                          className="h-12 rounded-xl w-full"
+                          value={ageInput}
+                          onChange={(e) => setAgeInput(e.target.value)}
+                          required
+                          disabled={isSubmitting}
+                          min={1}
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <Label htmlFor="email">Email</Label>
+                        <Input 
+                          id="email"
+                          type="email"
+                          placeholder="nama@email.com" 
+                          className="h-12 rounded-xl w-full"
+                          value={email}
+                          onChange={(e) => setEmail(e.target.value)}
+                          required
+                          disabled={isSubmitting}
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <Label htmlFor="password">Password</Label>
+                        <Input 
+                          id="password"
+                          type="password"
+                          placeholder="Minimal 6 karakter" 
+                          className="h-12 rounded-xl w-full"
+                          value={password}
+                          onChange={(e) => setPassword(e.target.value)}
+                          required
+                          disabled={isSubmitting}
+                          minLength={6}
+                        />
+                      </div>
+
+                      {authError && <p className="text-destructive text-sm font-semibold text-center">{authError}</p>}
+                      
                       <Button 
                         type="submit"
                         size="lg" 
-                        className="w-full rounded-full py-6 text-lg shadow-lg shadow-primary/20" 
-                        disabled={isSendingOtp || !email.trim()}
+                        className="w-full rounded-full py-6 text-lg shadow-lg shadow-primary/20 mt-4" 
+                        disabled={isSubmitting}
                       >
-                        {isSendingOtp ? "Mengirim Kode..." : "Kirim Kode OTP"}
+                        {isSubmitting ? "Mendaftar..." : "Daftar & Mulai"}
                       </Button>
                     </form>
                   ) : (
-                    <form onSubmit={handleVerifyOtp} className="w-full max-w-sm mx-auto space-y-4">
-                      <p className="text-xl text-muted-foreground text-center font-normal">
-                        Masukkan 6-digit kode OTP yang telah kami kirimkan ke <strong>{email}</strong>.
+                    <form onSubmit={handleSignIn} className="w-full space-y-4 text-left">
+                      <p className="text-sm text-muted-foreground text-center mb-2">
+                        Masuk ke akun yang sudah terdaftar.
                       </p>
-                      <Input 
-                        type="text"
-                        placeholder="000000" 
-                        className="text-center text-lg h-14 rounded-full w-full tracking-[0.5em] font-mono font-bold"
-                        maxLength={6}
-                        value={otp}
-                        onChange={(e) => setOtp(e.target.value)}
-                        required
-                        disabled={isVerifying}
-                      />
-                      {authError && <p className="text-destructive text-sm font-semibold">{authError}</p>}
+                      
+                      <div className="space-y-1">
+                        <Label htmlFor="login-email">Email</Label>
+                        <Input 
+                          id="login-email"
+                          type="email"
+                          placeholder="nama@email.com" 
+                          className="h-12 rounded-xl w-full"
+                          value={email}
+                          onChange={(e) => setEmail(e.target.value)}
+                          required
+                          disabled={isSubmitting}
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <Label htmlFor="login-password">Password</Label>
+                        <Input 
+                          id="login-password"
+                          type="password"
+                          placeholder="Masukkan password Anda" 
+                          className="h-12 rounded-xl w-full"
+                          value={password}
+                          onChange={(e) => setPassword(e.target.value)}
+                          required
+                          disabled={isSubmitting}
+                        />
+                      </div>
+
+                      {authError && <p className="text-destructive text-sm font-semibold text-center">{authError}</p>}
+                      
                       <Button 
                         type="submit"
                         size="lg" 
-                        className="w-full rounded-full py-6 text-lg shadow-lg shadow-primary/20" 
-                        disabled={isVerifying || otp.length < 6}
+                        className="w-full rounded-full py-6 text-lg shadow-lg shadow-primary/20 mt-4" 
+                        disabled={isSubmitting}
                       >
-                        {isVerifying ? "Memverifikasi..." : "Verifikasi & Lanjutkan"}
+                        {isSubmitting ? "Masuk..." : "Masuk"}
                       </Button>
-                      <button 
-                        type="button" 
-                        className="text-sm text-primary hover:underline block mx-auto mt-2" 
-                        onClick={() => { setOtpSent(false); setAuthError(""); }}
-                      >
-                        Ganti Email
-                      </button>
                     </form>
                   )}
-                </>
+                </div>
               ) : (
                 <>
                   <p className="text-xl text-muted-foreground max-w-md mx-auto text-center font-normal">

@@ -1,17 +1,102 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Shield, ShieldCheck, GlobeLock, AlertTriangle, Download, Info } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 
 export default function SafeBrowsePage() {
-  const [customBlocks, setCustomBlocks] = useState(["twitter.com", "instagram.com"]);
+  const [customBlocks, setCustomBlocks] = useState<string[]>([]);
+  const [newDomain, setNewDomain] = useState("");
+  const [isExtensionActive, setIsExtensionActive] = useState(false);
+  const [safeSearchEnabled, setSafeSearchEnabled] = useState(true);
+
+  // Load initial custom blocks from localStorage on mount
+  useEffect(() => {
+    const stored = localStorage.getItem("pulihku_custom_blocks");
+    if (stored) {
+      setCustomBlocks(JSON.parse(stored));
+    } else {
+      const defaultBlocks = ["twitter.com", "instagram.com"];
+      setCustomBlocks(defaultBlocks);
+      localStorage.setItem("pulihku_custom_blocks", JSON.stringify(defaultBlocks));
+    }
+  }, []);
+
+  // Listen for replies from the content script
+  useEffect(() => {
+    const handleExtensionMessage = (event: MessageEvent) => {
+      if (event.source !== window) return;
+      if (event.data && event.data.source === "pulihku-extension") {
+        if (event.data.type === "PONG") {
+          setIsExtensionActive(event.data.active);
+        }
+      }
+    };
+
+    window.addEventListener("message", handleExtensionMessage);
+
+    // Send a ping to check if extension is active
+    const checkExtension = () => {
+      window.postMessage({ source: "pulihku-web", type: "PING" }, "*");
+    };
+
+    // Ping immediately
+    checkExtension();
+
+    // Ping periodically to detect if extension gets enabled or disabled
+    const interval = setInterval(checkExtension, 2000);
+
+    return () => {
+      window.removeEventListener("message", handleExtensionMessage);
+      clearInterval(interval);
+    };
+  }, []);
+
+  // Send custom blocks to extension whenever it changes or extension becomes active
+  useEffect(() => {
+    if (isExtensionActive) {
+      window.postMessage({
+        source: "pulihku-web",
+        type: "UPDATE_CUSTOM_BLOCKS",
+        domains: customBlocks
+      }, "*");
+    }
+  }, [customBlocks, isExtensionActive]);
+
+  // Send safe search status to extension
+  useEffect(() => {
+    if (isExtensionActive) {
+      window.postMessage({
+        source: "pulihku-web",
+        type: "UPDATE_SAFE_SEARCH",
+        enabled: safeSearchEnabled
+      }, "*");
+    }
+  }, [safeSearchEnabled, isExtensionActive]);
+
+  const addBlock = (e: React.FormEvent) => {
+    e.preventDefault();
+    const clean = newDomain.trim().toLowerCase().replace(/^(https?:\/\/)?(www\.)?/, "");
+    if (!clean) return;
+    if (customBlocks.includes(clean)) {
+      setNewDomain("");
+      return;
+    }
+    const updated = [...customBlocks, clean];
+    setCustomBlocks(updated);
+    localStorage.setItem("pulihku_custom_blocks", JSON.stringify(updated));
+    setNewDomain("");
+  };
 
   const removeBlock = (domain: string) => {
-    setCustomBlocks(customBlocks.filter(b => b !== domain));
+    const updated = customBlocks.filter(b => b !== domain);
+    setCustomBlocks(updated);
+    localStorage.setItem("pulihku_custom_blocks", JSON.stringify(updated));
   };
+
   return (
     <div className="flex flex-col gap-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div>
@@ -120,8 +205,23 @@ export default function SafeBrowsePage() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-sm text-muted-foreground mb-4">Tambahkan situs spesifik yang sering menjadi pemicu Anda (contoh: Twitter, Instagram).</p>
-              <ul className="space-y-2 mb-4">
+              <p className="text-sm text-muted-foreground mb-4">Tambahkan situs spesifik yang ingin Anda blokir (contoh: twitter.com, instagram.com).</p>
+              
+              <form onSubmit={addBlock} className="flex gap-2 mb-4">
+                <Input 
+                  type="text" 
+                  placeholder="facebook.com" 
+                  value={newDomain}
+                  onChange={(e) => setNewDomain(e.target.value)}
+                  className="h-10 rounded-xl bg-background"
+                  disabled={!isExtensionActive}
+                />
+                <Button type="submit" className="h-10 rounded-xl" disabled={!isExtensionActive || !newDomain.trim()}>
+                  Tambah
+                </Button>
+              </form>
+
+              <ul className="space-y-2 mb-2">
                 {customBlocks.length === 0 && (
                   <p className="text-sm text-center text-muted-foreground p-4 border border-dashed rounded-xl">Belum ada daftar kustom.</p>
                 )}
@@ -137,7 +237,12 @@ export default function SafeBrowsePage() {
                   </li>
                 ))}
               </ul>
-              <Button variant="outline" className="w-full">Kelola Daftar Blokir Kustom</Button>
+              
+              {!isExtensionActive && (
+                <p className="text-xs text-destructive mt-3 bg-destructive/5 p-2 rounded-lg border border-destructive/10 leading-relaxed">
+                  ⚠️ <strong>Ekstensi Tidak Aktif:</strong> Daftar blokir kustom tidak dapat diproses sampai Ekstensi Pendamping Pulihku dipasang dan aktif di Chrome.
+                </p>
+              )}
             </CardContent>
           </Card>
 
@@ -148,12 +253,21 @@ export default function SafeBrowsePage() {
                 Safe Search Enforcer
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground mb-4">Memaksa Google & Bing ke mode pencarian aman untuk menghindari gambar eksplisit di hasil pencarian.</p>
+            <CardContent className="space-y-4">
+              <p className="text-sm text-muted-foreground">Memaksa Google & Bing ke mode pencarian aman untuk menghindari gambar eksplisit di hasil pencarian.</p>
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium">Status Fitur</span>
-                <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">Aktif via Ekstensi</Badge>
+                {isExtensionActive ? (
+                  <Badge className="bg-primary/20 text-primary border-primary/30 hover:bg-primary/20">Aktif via Ekstensi</Badge>
+                ) : (
+                  <Badge variant="outline" className="bg-destructive/10 text-destructive border-destructive/20">Tidak Aktif</Badge>
+                )}
               </div>
+              {!isExtensionActive && (
+                <p className="text-xs text-destructive bg-destructive/5 p-2 rounded-lg border border-destructive/10 leading-relaxed">
+                  ⚠️ Pasang Ekstensi Pendamping Pulihku di Chrome untuk memaksa Safe Search berjalan secara otomatis.
+                </p>
+              )}
             </CardContent>
           </Card>
         </div>

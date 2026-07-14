@@ -13,6 +13,7 @@ type UserData = {
   avatar?: string;
   age?: number;
   answers?: Record<string, string | string[]>;
+  xp?: number;
 };
 
 type UserContextType = {
@@ -23,6 +24,7 @@ type UserContextType = {
   logout: () => Promise<void>;
   recordRelapse: () => void;
   updateProfile: (name: string, avatar: string) => void;
+  addXp: (amount: number) => void;
   isLoading: boolean;
   isAuthenticated: boolean;
 };
@@ -56,6 +58,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
           avatar: data.avatar,
           age: data.age,
           answers: data.answers,
+          xp: data.xp || 0,
         };
         setUser(userData);
         localStorage.setItem("pulihku_user", JSON.stringify(userData));
@@ -183,6 +186,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       avatar: "🌱",
       age: currentProfile?.age || undefined,
       answers,
+      xp: 0,
     };
     localStorage.setItem("pulihku_user", JSON.stringify(newUser));
     setUser(newUser);
@@ -236,8 +240,28 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       });
   };
 
+  const addXp = (amount: number) => {
+    if (!user) return;
+    const currentXp = user.xp || 0;
+    const updatedUser = {
+      ...user,
+      xp: currentXp + amount
+    };
+    localStorage.setItem("pulihku_user", JSON.stringify(updatedUser));
+    setUser(updatedUser);
+
+    // Sync to Supabase
+    supabase
+      .from("users_pemulihan")
+      .update({ xp: updatedUser.xp })
+      .eq("id", user.id)
+      .then(({ error }) => {
+        if (error) console.warn("Note: Suppressed Supabase sync warning (column xp may not exist yet):", error.message);
+      });
+  };
+
   return (
-    <UserContext.Provider value={{ user, login, signUpWithEmailPassword, signInWithEmailPassword, logout, recordRelapse, updateProfile, isLoading, isAuthenticated }}>
+    <UserContext.Provider value={{ user, login, signUpWithEmailPassword, signInWithEmailPassword, logout, recordRelapse, updateProfile, addXp, isLoading, isAuthenticated }}>
       {/* Jika masih loading atau user belum login (tapi bukan di halaman onboarding), jangan render anak-anak untuk mencegah flash konten */}
       {!isLoading && (user || pathname === "/onboarding") ? children : null}
     </UserContext.Provider>

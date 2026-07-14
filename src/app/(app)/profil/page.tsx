@@ -9,6 +9,7 @@ import { differenceInDays, parseISO, format } from "date-fns";
 import { id } from "date-fns/locale";
 import { LogOut, Trophy, Target, ShieldCheck, User } from "lucide-react";
 import { toast } from "sonner";
+import { getRankDetails } from "@/lib/ranks";
 
 const AVATARS = ["🌱", "🌿", "🌳", "🌲", "👑", "🦁", "🦅", "⚔️", "🛡️", "🔥"];
 
@@ -19,13 +20,9 @@ export default function ProfilPage() {
 
   const streak = user?.startDate ? differenceInDays(new Date(), parseISO(user.startDate)) : 0;
   
-  // Calculate Rank based on streak
-  let rankName = "Benih";
-  let rankXP = streak * 50;
-  if (streak >= 7 && streak < 30) rankName = "Tunas";
-  if (streak >= 30 && streak < 90) rankName = "Akar Kuat";
-  if (streak >= 90 && streak < 365) rankName = "Pohon Kokoh";
-  if (streak >= 365) rankName = "Hutan Raksasa";
+  // Calculate Rank details based on shared neurosains & XP progression
+  const { rankName, badge, nextRank, levelProgressPercent } = getRankDetails(user?.xp || 0, streak);
+  const totalXp = user?.xp || 0;
 
   const handleSave = () => {
     if (!name.trim()) return;
@@ -99,8 +96,26 @@ export default function ProfilPage() {
               <div className="w-24 h-24 bg-background rounded-full shadow-xl flex items-center justify-center text-5xl mb-4 border-4 border-primary/20">
                 {avatar}
               </div>
-              <h3 className="text-2xl font-bold text-foreground">{rankName}</h3>
-              <p className="text-muted-foreground">{rankXP} XP Terkumpul</p>
+              <h3 className="text-2xl font-bold text-foreground flex items-center gap-1.5">{rankName} <span className="text-xl">{badge}</span></h3>
+              <p className="text-muted-foreground text-xs mt-1">{totalXp} XP Terkumpul</p>
+              
+              <div className="w-full mt-6 space-y-2">
+                <div className="flex justify-between text-[10px] text-muted-foreground font-bold">
+                  <span>Progres Level</span>
+                  <span>{levelProgressPercent}%</span>
+                </div>
+                <div className="w-full bg-secondary h-2.5 rounded-full overflow-hidden border border-border/40">
+                  <div 
+                    className="bg-primary h-full transition-all duration-500 rounded-full" 
+                    style={{ width: `${levelProgressPercent}%` }} 
+                  />
+                </div>
+                {nextRank !== "Maksimum" && (
+                  <p className="text-[9px] text-center text-muted-foreground mt-1 font-semibold">
+                    Target Berikutnya: <span className="text-foreground">{nextRank}</span>
+                  </p>
+                )}
+              </div>
             </CardContent>
           </Card>
 

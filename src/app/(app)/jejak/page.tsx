@@ -2,8 +2,8 @@
 
 import { useUser } from "@/components/user-provider";
 import { differenceInDays, parseISO } from "date-fns";
-import { useState } from "react";
-import { CheckCircle2, User as UserIcon, Flag, Activity, Flame, ArrowUpRight, ArrowDownRight } from "lucide-react";
+import { useState, useEffect } from "react";
+import { CheckCircle2, User as UserIcon, Flag, Activity, Flame, ArrowUpRight, ArrowDownRight, SmilePlus } from "lucide-react";
 import {
   LineChart,
   Line,
@@ -24,6 +24,21 @@ export default function JejakPulih() {
   const { user, recordRelapse } = useUser();
   const [activeTab, setActiveTab] = useState("Overview");
   const [isRelapseModalOpen, setIsRelapseModalOpen] = useState(false);
+  const [mood, setMood] = useState<number | null>(null);
+
+  // Load mood from localStorage on mount
+  useEffect(() => {
+    const storedMood = localStorage.getItem("pulihku_daily_mood");
+    if (storedMood) {
+      setMood(parseInt(storedMood));
+    }
+  }, []);
+
+  const handleMoodSelect = (index: number) => {
+    setMood(index);
+    localStorage.setItem("pulihku_daily_mood", index.toString());
+    toast.success("Terima kasih! Mood harian Anda telah dicatat.");
+  };
 
   const streak = user?.startDate ? differenceInDays(new Date(), parseISO(user.startDate)) : 0;
   const totalRelapse = user?.relapseCount || 0;
@@ -307,6 +322,39 @@ export default function JejakPulih() {
                     />
                   </BarChart>
                 </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {activeTab === "Mood" && (
+        <div className="animate-in fade-in duration-300 space-y-6">
+          <Card className="border border-border/80 shadow-sm rounded-3xl">
+            <CardHeader>
+              <CardTitle className="text-xl font-bold flex items-center gap-2">
+                <SmilePlus className="w-5 h-5 text-primary" />
+                Mood Tracker Harian
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground mb-6 leading-relaxed">
+                Bagaimana perasaan Anda hari ini? Mencatat mood secara rutin membantu AI menganalisis pola emosi yang memicu keinginan menonton konten pornografi.
+              </p>
+              <div className="flex justify-between gap-2 max-w-md mx-auto">
+                {['😭', '😔', '😐', '🙂', '🤩'].map((emoji, i) => (
+                  <button 
+                    key={i} 
+                    onClick={() => handleMoodSelect(i)}
+                    className={`text-3xl transition-all p-4 rounded-2xl flex-1 flex items-center justify-center ${
+                      mood === i 
+                        ? 'bg-primary scale-105 shadow-md shadow-primary/20 text-foreground' 
+                        : 'bg-secondary/40 hover:bg-secondary hover:opacity-100 opacity-80'
+                    }`}
+                  >
+                    {emoji}
+                  </button>
+                ))}
               </div>
             </CardContent>
           </Card>

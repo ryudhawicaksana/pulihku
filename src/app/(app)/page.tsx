@@ -4,17 +4,18 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Flame, Trophy, Target, Zap, SmilePlus, CheckCircle2, Brain, AlertCircle, Quote } from "lucide-react";
+import { Flame, Trophy, Target, Zap, CheckCircle2, Brain, AlertCircle, Quote, Star } from "lucide-react";
 import { PanicButton } from "@/components/panic-button";
 import { useUser } from "@/components/user-provider";
 import { differenceInDays, parseISO } from "date-fns";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
+import { getRankDetails } from "@/lib/ranks";
 
 export default function Dashboard() {
-  const { user, logout } = useUser();
-  const [challengeDone, setChallengeDone] = useState(false);
-  const [mood, setMood] = useState<number | null>(null);
+  const { user } = useUser();
+  const { addXp } = useUser();
+  const [completedChallenges, setCompletedChallenges] = useState<Record<string, boolean>>({});
   
   // Calculate current streak from user's startDate
   const streak = user?.startDate ? differenceInDays(new Date(), parseISO(user.startDate)) : 0;
@@ -48,6 +49,32 @@ export default function Dashboard() {
 
   // Calculate progress percentage
   const progressPercent = Math.min(100, Math.round((streak / targetDays) * 100));
+
+  // Get Rank details
+  const { rankName, badge, nextRank, levelProgressPercent } = getRankDetails(user?.xp || 0, streak);
+
+  // Daily challenges definition
+  const challenges = [
+    { id: "read", title: "Membaca 15 Menit", desc: "Alihkan pikiranmu dengan membaca buku motivasi atau edukatif.", xp: 50 },
+    { id: "workout", title: "Olahraga Ringan", desc: "Push-up 10x atau stretching untuk memicu dopamin alami yang sehat.", xp: 30 },
+    { id: "water", title: "Minum Air Putih 2L", desc: "Menjaga hidrasi tubuh dan metabolisme agar pikiran tetap fokus.", xp: 20 },
+  ];
+
+  // Load completed challenges on mount
+  useEffect(() => {
+    const stored = localStorage.getItem("pulihku_completed_challenges");
+    if (stored) {
+      setCompletedChallenges(JSON.parse(stored));
+    }
+  }, []);
+
+  const handleCompleteChallenge = (id: string, xpReward: number) => {
+    const updated = { ...completedChallenges, [id]: true };
+    setCompletedChallenges(updated);
+    localStorage.setItem("pulihku_completed_challenges", JSON.stringify(updated));
+    addXp(xpReward);
+    toast.success(`Hebat! Tantangan selesai. +${xpReward} XP!`);
+  };
 
   return (
     <div className="flex flex-col gap-8 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-12">
@@ -138,21 +165,51 @@ export default function Dashboard() {
           </Card>
         </div>
 
-        {/* Kolom Kanan: Stats, Challenges & Mood Tracker */}
+        {/* Kolom Kanan: Stats, Ranks & Daily Challenges */}
         <div className="space-y-6">
           
+          {/* Card: Ranks & Level Progress */}
+          <Card className="border border-border/80 shadow-sm rounded-3xl bg-secondary/20">
+            <CardContent className="p-6 space-y-4">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 bg-primary/20 rounded-full flex items-center justify-center text-2xl shadow-inner border border-primary/30">
+                  {badge}
+                </div>
+                <div>
+                  <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">Level Pengguna</p>
+                  <h4 className="text-lg font-black text-foreground flex items-center gap-1.5">{rankName}</h4>
+                </div>
+              </div>
+
+              <div className="space-y-2 pt-2">
+                <div className="flex justify-between text-[10px] text-muted-foreground font-bold">
+                  <span>Progres Level ({user?.xp || 0} XP)</span>
+                  <span>{levelProgressPercent}%</span>
+                </div>
+                <div className="w-full bg-secondary h-2 rounded-full overflow-hidden">
+                  <div className="bg-primary h-full transition-all duration-500 rounded-full" style={{ width: `${levelProgressPercent}%` }} />
+                </div>
+                {nextRank !== "Maksimum" && (
+                  <p className="text-[9px] text-muted-foreground font-medium">
+                    Butuh XP untuk naik ke <span className="text-foreground font-bold">{nextRank}</span>
+                  </p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Card: Record & Score */}
           <Card className="border border-border/80 shadow-sm rounded-3xl">
-            <CardContent className="p-6 space-y-5">
+            <CardContent className="p-6 space-y-4">
               {/* Best Streak */}
-              <div className="flex items-center justify-between pb-4 border-b border-border/60">
+              <div className="flex items-center justify-between pb-3 border-b border-border/60">
                 <div className="flex items-center gap-3">
                   <div className="bg-secondary p-2.5 rounded-xl text-yellow-500">
                     <Trophy className="w-5 h-5" />
                   </div>
                   <div>
-                    <p className="text-xs text-muted-foreground font-semibold">Rekor Terpanjang</p>
-                    <p className="text-lg font-bold text-foreground">{streak > 0 ? streak : 0} Hari</p>
+                    <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">Rekor Terpanjang</p>
+                    <p className="text-base font-bold text-foreground">{streak > 0 ? streak : 0} Hari</p>
                   </div>
                 </div>
               </div>
@@ -164,15 +221,15 @@ export default function Dashboard() {
                     <Target className="w-5 h-5" />
                   </div>
                   <div>
-                    <p className="text-xs text-muted-foreground font-semibold">Recovery Score</p>
-                    <p className="text-lg font-bold text-foreground">{Math.min(100, Math.round((streak / targetDays) * 100))}/100</p>
+                    <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">Recovery Score</p>
+                    <p className="text-base font-bold text-foreground">{Math.min(100, Math.round((streak / targetDays) * 100))}/100</p>
                   </div>
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          {/* Card: Daily Challenge */}
+          {/* Card: Daily Challenges List (Min 3) */}
           <Card className="border border-primary/20 bg-primary/5 overflow-hidden rounded-3xl">
             <CardHeader className="pb-2">
               <div className="flex items-center gap-3">
@@ -181,68 +238,49 @@ export default function Dashboard() {
                 </div>
                 <div>
                   <CardTitle className="text-base font-bold">Tantangan Harian</CardTitle>
-                  <CardDescription className="text-xs">Selesaikan untuk +50 XP</CardDescription>
+                  <CardDescription className="text-xs">Selesaikan tugas produktif untuk meraih XP</CardDescription>
                 </div>
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="bg-background p-4 rounded-xl border border-border/40">
-                <h4 className="font-bold text-sm text-foreground">Membaca 15 Menit</h4>
-                <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
-                  Alihkan pikiranmu dengan membaca buku non-fiksi yang memotivasi.
-                </p>
-              </div>
-              <Button 
-                variant={challengeDone ? "secondary" : "default"}
-                disabled={challengeDone}
-                className="w-full rounded-xl text-sm"
-                onClick={() => {
-                  setChallengeDone(true);
-                  toast.success("Hebat! Tantangan selesai. +50 XP");
-                }}
-              >
-                {challengeDone ? (
-                  <>
-                    <CheckCircle2 className="mr-2 h-4 w-4 text-emerald-500" /> Selesai
-                  </>
-                ) : "Tandai Selesai"}
-              </Button>
-            </CardContent>
-          </Card>
-
-          {/* Card: Mood Tracker */}
-          <Card className="border border-border/80 shadow-sm rounded-3xl">
-            <CardHeader className="pb-2">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-base font-bold flex items-center gap-2">
-                  <SmilePlus className="w-5 h-5 text-muted-foreground" />
-                  Mood Hari Ini
-                </CardTitle>
-                <Badge variant={mood !== null ? "default" : "outline"} className={`text-[10px] py-0.5 px-2 rounded-full ${mood === null ? "bg-secondary text-muted-foreground" : "bg-primary text-foreground"}`}>
-                  {mood !== null ? "Tercatat" : "Belum Diisi"}
-                </Badge>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <p className="text-xs text-muted-foreground mb-4">Bagaimana perasaanmu hari ini? Catat untuk AI analisis.</p>
-              <div className="flex justify-between gap-1">
-                {['😭', '😔', '😐', '🙂', '🤩'].map((emoji, i) => (
-                  <button 
-                    key={i} 
-                    onClick={() => {
-                      setMood(i);
-                      toast.success("Terima kasih! Mood harian Anda telah dicatat.");
-                    }}
-                    className={`text-2xl transition-all p-2 rounded-xl flex-1 flex items-center justify-center ${
-                      mood === i 
-                        ? 'bg-primary scale-105' 
-                        : 'bg-secondary/40 hover:bg-secondary hover:opacity-100 opacity-80'
-                    }`}
-                  >
-                    {emoji}
-                  </button>
-                ))}
-              </div>
+              {challenges.map((ch) => {
+                const isCompleted = !!completedChallenges[ch.id];
+                return (
+                  <div key={ch.id} className="bg-background p-4 rounded-2xl border border-border/40 space-y-3 shadow-sm">
+                    <div className="flex justify-between items-start gap-2">
+                      <div>
+                        <h4 className={`font-bold text-sm ${isCompleted ? 'text-muted-foreground line-through' : 'text-foreground'}`}>
+                          {ch.title}
+                        </h4>
+                        <p className="text-[11px] text-muted-foreground mt-0.5 leading-relaxed">
+                          {ch.desc}
+                        </p>
+                      </div>
+                      <Badge className="bg-primary/20 text-foreground text-[10px] font-black shrink-0 px-2 py-0.5">
+                        +{ch.xp} XP
+                      </Badge>
+                    </div>
+                    
+                    <Button 
+                      variant={isCompleted ? "secondary" : "default"}
+                      disabled={isCompleted}
+                      size="sm"
+                      className="w-full rounded-xl text-xs h-9 font-bold"
+                      onClick={() => handleCompleteChallenge(ch.id, ch.xp)}
+                    >
+                      {isCompleted ? (
+                        <span className="flex items-center gap-1.5 text-emerald-500">
+                          <CheckCircle2 className="w-4 h-4" /> Selesai
+                        </span>
+                      ) : (
+                        <span className="flex items-center gap-1.5">
+                          <Star className="w-3.5 h-3.5" /> Tandai Selesai
+                        </span>
+                      )}
+                    </Button>
+                  </div>
+                );
+              })}
             </CardContent>
           </Card>
         </div>

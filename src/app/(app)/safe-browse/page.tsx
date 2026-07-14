@@ -55,27 +55,17 @@ export default function SafeBrowsePage() {
     };
   }, []);
 
-  // Send custom blocks to extension whenever it changes or extension becomes active
+  // Send settings to extension whenever they change or extension becomes active
   useEffect(() => {
     if (isExtensionActive) {
       window.postMessage({
         source: "pulihku-web",
-        type: "UPDATE_CUSTOM_BLOCKS",
-        domains: customBlocks
+        type: "UPDATE_SETTINGS",
+        domains: customBlocks,
+        safeSearch: safeSearchEnabled
       }, "*");
     }
-  }, [customBlocks, isExtensionActive]);
-
-  // Send safe search status to extension
-  useEffect(() => {
-    if (isExtensionActive) {
-      window.postMessage({
-        source: "pulihku-web",
-        type: "UPDATE_SAFE_SEARCH",
-        enabled: safeSearchEnabled
-      }, "*");
-    }
-  }, [safeSearchEnabled, isExtensionActive]);
+  }, [customBlocks, safeSearchEnabled, isExtensionActive]);
 
   const addBlock = (e: React.FormEvent) => {
     e.preventDefault();

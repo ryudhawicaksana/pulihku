@@ -7,12 +7,13 @@ window.addEventListener("message", (event) => {
     if (event.data.type === "PING") {
       // Respond immediately to confirm extension is installed
       window.postMessage({ source: "pulihku-extension", type: "PONG", active: true }, "*");
-    } else if (event.data.type === "UPDATE_CUSTOM_BLOCKS") {
-      // Forward custom blocks to background script
-      chrome.runtime.sendMessage({ type: "UPDATE_CUSTOM_BLOCKS", domains: event.data.domains });
-    } else if (event.data.type === "UPDATE_SAFE_SEARCH") {
-      // Forward safe search status to background script
-      chrome.runtime.sendMessage({ type: "UPDATE_SAFE_SEARCH", enabled: event.data.enabled });
+    } else if (event.data.type === "UPDATE_SETTINGS") {
+      // Forward settings to background script
+      chrome.runtime.sendMessage({
+        type: "UPDATE_SETTINGS",
+        domains: event.data.domains,
+        safeSearch: event.data.safeSearch
+      });
     }
   }
 });

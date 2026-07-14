@@ -3,6 +3,8 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import { differenceInDays, parseISO } from "date-fns";
+import { toast } from "sonner";
 
 type UserData = {
   id: string;
@@ -14,6 +16,7 @@ type UserData = {
   age?: number;
   answers?: Record<string, string | string[]>;
   xp?: number;
+  bestStreak?: number;
 };
 
 type UserContextType = {
@@ -59,6 +62,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
           age: data.age,
           answers: data.answers,
           xp: data.xp || 0,
+          bestStreak: data.best_streak || 0,
         };
         setUser(userData);
         localStorage.setItem("pulihku_user", JSON.stringify(userData));
@@ -187,6 +191,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       age: currentProfile?.age || undefined,
       answers,
       xp: 0,
+      bestStreak: 0,
     };
     localStorage.setItem("pulihku_user", JSON.stringify(newUser));
     setUser(newUser);
@@ -203,20 +208,51 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
   const recordRelapse = () => {
     if (!user) return;
+
+    // Calculate current streak
+    const currentStreak = differenceInDays(new Date(), parseISO(user.startDate));
+    const newBestStreak = Math.max(user.bestStreak || 0, currentStreak);
+
+    // Relapse count penalty logic
+    const todayStr = new Date().toDateString();
+    const storedDate = localStorage.getItem("pulihku_relapse_today_date");
+    let relapseTodayCount = 0;
+
+    if (storedDate === todayStr) {
+      const storedCount = localStorage.getItem("pulihku_relapse_today_count");
+      if (storedCount) relapseTodayCount = parseInt(storedCount);
+    } else {
+      localStorage.setItem("pulihku_relapse_today_date", todayStr);
+    }
+
+    const newRelapseTodayCount = relapseTodayCount + 1;
+    localStorage.setItem("pulihku_relapse_today_count", newRelapseTodayCount.toString());
+
+    // Penalty: 1st relapse = 10 XP, subsequent relapses = 20 XP
+    const penalty = newRelapseTodayCount === 1 ? 10 : 20;
+    const newXp = Math.max(0, (user.xp || 0) - penalty);
+
     const updatedUser = {
       ...user,
-      startDate: new Date().toISOString(), // Reset streak
+      startDate: new Date().toISOString(), // Reset current streak to 0
       relapseCount: (user.relapseCount || 0) + 1,
+      xp: newXp,
+      bestStreak: newBestStreak
     };
+    
     localStorage.setItem("pulihku_user", JSON.stringify(updatedUser));
     setUser(updatedUser);
+
+    toast.error(`Relapse tercatat! Streak di-reset. XP Anda berkurang -${penalty} XP!`);
 
     // Sync to Supabase
     supabase
       .from("users_pemulihan")
       .update({ 
         start_date: updatedUser.startDate, 
-        relapse_count: updatedUser.relapseCount 
+        relapse_count: updatedUser.relapseCount,
+        xp: updatedUser.xp,
+        best_streak: updatedUser.bestStreak
       })
       .eq("id", user.id)
       .then(({ error }) => {
@@ -242,11 +278,36 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
   const addXp = (amount: number) => {
     if (!user) return;
+
+    // Daily XP cap logic (Max 50 XP/day)
+    const todayStr = new Date().toDateString();
+    const storedDate = localStorage.getItem("pulihku_xp_date");
+    let xpEarnedToday = 0;
+
+    if (storedDate === todayStr) {
+      const storedXp = localStorage.getItem("pulihku_xp_earned_today");
+      if (storedXp) xpEarnedToday = parseInt(storedXp);
+    } else {
+      localStorage.setItem("pulihku_xp_date", todayStr);
+    }
+
+    if (xpEarnedToday >= 50) {
+      toast.info("Batas XP harian tercapai (Maksimal 50 XP/hari).");
+      return;
+    }
+
+    let addedAmount = amount;
+    if (xpEarnedToday + amount > 50) {
+      addedAmount = 50 - xpEarnedToday;
+    }
+
     const currentXp = user.xp || 0;
     const updatedUser = {
       ...user,
-      xp: currentXp + amount
+      xp: currentXp + addedAmount
     };
+
+    localStorage.setItem("pulihku_xp_earned_today", (xpEarnedToday + addedAmount).toString());
     localStorage.setItem("pulihku_user", JSON.stringify(updatedUser));
     setUser(updatedUser);
 

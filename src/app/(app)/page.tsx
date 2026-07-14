@@ -116,7 +116,7 @@ export default function Dashboard() {
     const fetchLeaderboard = async () => {
       const { data, error } = await supabase
         .from("users_pemulihan")
-        .select("name, avatar, start_date");
+        .select("name, avatar, start_date, best_streak");
       
       if (error) {
         console.error("Error fetching leaderboard:", error);
@@ -125,11 +125,12 @@ export default function Dashboard() {
 
       if (data) {
         const usersWithStreak = data.map((u: any) => {
-          const uStreak = u.start_date ? differenceInDays(new Date(), parseISO(u.start_date)) : 0;
+          const currentStreak = u.start_date ? differenceInDays(new Date(), parseISO(u.start_date)) : 0;
+          const bestStreak = u.best_streak || 0;
           return {
             name: u.name || "Pejuang",
             avatar: u.avatar || "🌱",
-            streak: uStreak
+            streak: Math.max(bestStreak, currentStreak)
           };
         });
 
@@ -277,18 +278,6 @@ export default function Dashboard() {
             </CardContent>
           </Card>
 
-          {/* Card: Best Streak */}
-          <Card className="border border-border/80 shadow-sm rounded-3xl">
-            <CardContent className="p-6 flex items-center gap-3">
-              <div className="bg-secondary p-2.5 rounded-xl text-yellow-500">
-                <Trophy className="w-5 h-5" />
-              </div>
-              <div>
-                <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">Rekor Terpanjang Anda</p>
-                <p className="text-base font-bold text-foreground">{streak > 0 ? streak : 0} Hari</p>
-              </div>
-            </CardContent>
-          </Card>
 
           {/* Card: Leaderboard (Top 10) */}
           <Card className="border border-border/80 shadow-sm rounded-3xl">

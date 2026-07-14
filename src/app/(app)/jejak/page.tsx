@@ -3,10 +3,10 @@
 import { useUser } from "@/components/user-provider";
 import { differenceInDays, parseISO } from "date-fns";
 import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { 
   CheckCircle2, Flag, Activity, Flame, ArrowUpRight, ArrowDownRight, 
-  SmilePlus, Trophy, Target, ShieldCheck, Heart, Brain 
+  SmilePlus, Trophy, Target, ShieldCheck, Heart, Brain, PenTool, Calendar
 } from "lucide-react";
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -17,26 +17,27 @@ import { Dialog, DialogContent, DialogTitle, DialogDescription, DialogFooter } f
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
+import { supabase } from "@/lib/supabase";
 
 export default function JejakPulih() {
   const { user, recordRelapse } = useUser();
   const [activeTab, setActiveTab] = useState("Overview");
   const [isRelapseModalOpen, setIsRelapseModalOpen] = useState(false);
   const [mood, setMood] = useState<number | null>(null);
+  const [moodNote, setMoodNote] = useState("");
+  const [moodHistory, setMoodHistory] = useState<{ date: string; emoji: number; note: string }[]>([]);
 
-  // Load mood from localStorage on mount
+  // Load mood and mood history on mount
   useEffect(() => {
     const storedMood = localStorage.getItem("pulihku_daily_mood");
     if (storedMood) {
       setMood(parseInt(storedMood));
     }
-  }, []);
-
-  const handleMoodSelect = (index: number) => {
-    setMood(index);
-    localStorage.setItem("pulihku_daily_mood", index.toString());
-    toast.success("Terima kasih! Mood harian Anda telah dicatat.");
-  };
+    if (user?.answers?.mood_history) {
+      setMoodHistory(user.answers.mood_history as any);
+    }
+  }, [user]);
 
   const streak = user?.startDate ? differenceInDays(new Date(), parseISO(user.startDate)) : 0;
   const totalRelapse = user?.relapseCount || 0;
@@ -60,31 +61,85 @@ export default function JejakPulih() {
 
   // Dynamic Chart Data for clean days and relapses (last 12 days simulation)
   const lineChartData = [
-    { name: "H 1", bersih: 1, relapse: 0 },
-    { name: "H 2", bersih: 2, relapse: 0 },
-    { name: "H 3", bersih: 3, relapse: 0 },
-    { name: "H 4", bersih: 4, relapse: 0 },
-    { name: "H 5", bersih: 5, relapse: 0 },
-    { name: "H 6", bersih: 0, relapse: 1 }, // Simulating relapse
-    { name: "H 7", bersih: 1, relapse: 0 },
-    { name: "H 8", bersih: 2, relapse: 0 },
-    { name: "H 9", bersih: 3, relapse: 0 },
-    { name: "H 10", bersih: 4, relapse: 0 },
-    { name: "H 11", bersih: 5, relapse: 0 },
-    { name: "H 12", bersih: streak, relapse: totalRelapse > 0 ? 1 : 0 },
+    { name: "H 1", bersih: streak > 0 ? 1 : 0 },
+    { name: "H 2", bersih: streak > 1 ? 2 : 0 },
+    { name: "H 3", bersih: streak > 2 ? 3 : 0 },
+    { name: "H 4", bersih: streak > 3 ? 4 : 0 },
+    { name: "H 5", bersih: streak > 4 ? 5 : 0 },
+    { name: "H 6", bersih: streak > 5 ? 6 : 0 },
+    { name: "H 7", bersih: streak > 6 ? 7 : 0 },
+    { name: "H 8", bersih: streak > 7 ? 8 : 0 },
+    { name: "H 9", bersih: streak > 8 ? 9 : 0 },
+    { name: "H 10", bersih: streak > 9 ? 10 : 0 },
+    { name: "H 11", bersih: streak > 10 ? 11 : 0 },
+    { name: "H 12", bersih: streak },
   ];
 
-  // Generate 6 months of data ending in the current month for Stats
+  // Accurate monthly stats based on user registration date
   const barChartData = Array.from({ length: 6 }).map((_, i) => {
     const d = new Date();
     d.setMonth(d.getMonth() - (5 - i));
-    const isCurrentMonth = i === 5;
+    const monthName = d.toLocaleString('id-ID', { month: 'short' });
+    
+    const userStart = user?.startDate ? parseISO(user.startDate) : new Date();
+    
+    // Start and End of this month slot
+    const monthStart = new Date(d.getFullYear(), d.getMonth(), 1);
+    const monthEnd = new Date(d.getFullYear(), d.getMonth() + 1, 0);
+    
+    let bersih = 0;
+    let relapse = 0;
+    
+    // Only show stats if this month is during or after the user's registration
+    if (monthEnd >= userStart) {
+      const isCurrentMonth = i === 5;
+      bersih = isCurrentMonth ? streak : Math.max(0, differenceInDays(monthEnd, userStart));
+      relapse = isCurrentMonth ? totalRelapse : 0;
+    }
+    
     return {
-      name: d.toLocaleString('id-ID', { month: 'short' }),
-      bersih: isCurrentMonth ? streak : 15 + i * 2,
-      relapse: isCurrentMonth ? totalRelapse : Math.max(0, 3 - i),
+      name: monthName,
+      bersih: Math.max(0, bersih),
+      relapse: Math.max(0, relapse),
     };
   });
+
+  const handleSaveMood = async () => {
+    if (mood === null) {
+      toast.error("Silakan pilih emoji mood Anda terlebih dahulu.");
+      return;
+    }
+
+    const todayStr = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+    
+    const newEntry = {
+      date: todayStr,
+      emoji: mood,
+      note: moodNote.trim()
+    };
+
+    const updatedHistory = [newEntry, ...moodHistory.filter(h => h.date !== todayStr)];
+    setMoodHistory(updatedHistory);
+    
+    if (user) {
+      const updatedAnswers = { ...user.answers, mood_history: updatedHistory };
+      const { error } = await supabase
+        .from("users_pemulihan")
+        .update({ answers: updatedAnswers })
+        .eq("id", user.id);
+
+      if (error) {
+        console.error("Error syncing mood to Supabase:", error);
+        toast.error("Gagal menyimpan mood ke server.");
+      } else {
+        const updatedUser = { ...user, answers: updatedAnswers };
+        localStorage.setItem("pulihku_user", JSON.stringify(updatedUser));
+        localStorage.setItem("pulihku_daily_mood", mood.toString());
+        toast.success("Mood harian & catatan jurnal Anda berhasil disimpan!");
+        setMoodNote("");
+      }
+    }
+  };
 
   return (
     <div className="flex flex-col gap-8 animate-in fade-in duration-500 pb-12">
@@ -138,9 +193,7 @@ export default function JejakPulih() {
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
-            className={`text-sm font-bold transition-all relative pb-2 px-1 ${
-              activeTab === tab ? "text-foreground" : "text-muted-foreground hover:text-foreground"
-            }`}
+            className="text-sm font-bold transition-all relative pb-2 px-1 text-foreground"
           >
             {tab}
             {activeTab === tab && (
@@ -331,23 +384,26 @@ export default function JejakPulih() {
         <div className="animate-in fade-in duration-300 space-y-6">
           <Card className="border border-border/80 shadow-sm rounded-3xl">
             <CardHeader>
-              <CardTitle className="text-xl font-bold flex items-center gap-2">
+              <div className="flex items-center gap-2">
                 <SmilePlus className="w-5 h-5 text-primary" />
-                Mood Tracker Harian
-              </CardTitle>
+                <CardTitle className="text-xl font-bold">Mood Tracker & Jurnal Harian</CardTitle>
+              </div>
+              <CardDescription className="text-xs">Mencatat emosi membantu mengidentifikasi pola pemicu kecanduan</CardDescription>
             </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground mb-6 leading-relaxed">
-                Bagaimana perasaan Anda hari ini? Mencatat mood secara rutin membantu AI menganalisis pola emosi yang memicu keinginan menonton konten pornografi.
+            <CardContent className="space-y-6">
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                Bagaimana perasaan Anda hari ini? Catat suasana emosi Anda serta tuangkan tulisan singkat tentang apa yang Anda rasakan untuk melatih kesadaran diri.
               </p>
+              
+              {/* Emoji Selection Grid */}
               <div className="flex justify-between gap-2 max-w-md mx-auto">
                 {['😭', '😔', '😐', '🙂', '🤩'].map((emoji, i) => (
                   <button 
                     key={i} 
-                    onClick={() => handleMoodSelect(i)}
-                    className={`text-3xl transition-all p-4 rounded-2xl flex-1 flex items-center justify-center ${
+                    onClick={() => setMood(i)}
+                    className={`text-3xl transition-all p-4 rounded-2xl flex-1 flex items-center justify-center border border-transparent ${
                       mood === i 
-                        ? 'bg-primary scale-105 shadow-md shadow-primary/20 text-foreground' 
+                        ? 'bg-primary scale-110 shadow-lg shadow-primary/20 text-foreground border-primary/50' 
                         : 'bg-secondary/40 hover:bg-secondary hover:opacity-100 opacity-80'
                     }`}
                   >
@@ -355,6 +411,55 @@ export default function JejakPulih() {
                   </button>
                 ))}
               </div>
+
+              {/* Jurnal Text Input Area */}
+              <div className="space-y-2 max-w-md mx-auto">
+                <label className="text-xs font-bold text-muted-foreground uppercase flex items-center gap-1.5">
+                  <PenTool className="w-3.5 h-3.5" /> Apa yang Anda rasakan hari ini?
+                </label>
+                <Textarea
+                  value={moodNote}
+                  onChange={(e) => setMoodNote(e.target.value)}
+                  placeholder="Tuliskan catatan pendek tentang emosi, tantangan, atau rasa syukur Anda hari ini..."
+                  className="rounded-2xl border-border/60 min-h-24 resize-none focus-visible:ring-primary"
+                />
+                
+                <Button 
+                  onClick={handleSaveMood}
+                  className="w-full rounded-2xl font-bold bg-primary text-foreground hover:bg-primary/95 mt-2 shadow-sm"
+                >
+                  Simpan Jurnal Mood
+                </Button>
+              </div>
+
+              {/* Mood history timeline list */}
+              <div className="max-w-md mx-auto pt-6 border-t border-border/60">
+                <h4 className="font-bold text-xs text-muted-foreground uppercase flex items-center gap-1.5 mb-4">
+                  <Calendar className="w-3.5 h-3.5" /> Riwayat Jurnal Mood
+                </h4>
+                <div className="space-y-3 max-h-60 overflow-y-auto pr-2">
+                  {moodHistory.length === 0 ? (
+                    <p className="text-xs text-center text-muted-foreground py-4">Belum ada riwayat mood tercatat.</p>
+                  ) : (
+                    moodHistory.map((item, idx) => (
+                      <div key={idx} className="bg-secondary/40 border border-border/40 p-4 rounded-2xl flex items-start gap-3 animate-in slide-in-from-bottom-2 duration-300">
+                        <span className="text-2xl shrink-0">
+                          {['😭', '😔', '😐', '🙂', '🤩'][item.emoji]}
+                        </span>
+                        <div className="space-y-1 flex-1">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[10px] font-bold text-muted-foreground">{item.date}</span>
+                          </div>
+                          <p className="text-xs text-foreground font-medium leading-relaxed">
+                            {item.note || "Hanya mencatat mood (tanpa catatan)"}
+                          </p>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+
             </CardContent>
           </Card>
         </div>

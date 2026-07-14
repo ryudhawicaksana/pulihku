@@ -114,17 +114,27 @@ export default function Dashboard() {
   // Fetch top 10 users for Leaderboard
   useEffect(() => {
     const fetchLeaderboard = async () => {
-      const { data, error } = await supabase
+      let queryResult = await supabase
         .from("users_pemulihan")
         .select("name, avatar, start_date, best_streak");
-      
-      if (error) {
-        console.error("Error fetching leaderboard:", error);
-        return;
-      }
 
-      if (data) {
-        const usersWithStreak = data.map((u: any) => {
+      let leaderboardData = queryResult.data;
+
+      if (queryResult.error) {
+        console.warn("Leaderboard error (possibly best_streak column missing), retrying basic select:", queryResult.error.message);
+        const retryResult = await supabase
+          .from("users_pemulihan")
+          .select("name, avatar, start_date");
+        
+        if (retryResult.error) {
+          console.error("Leaderboard fallback query failed:", retryResult.error);
+          return;
+        }
+        leaderboardData = retryResult.data as any;
+      }
+      
+      if (leaderboardData) {
+        const usersWithStreak = leaderboardData.map((u: any) => {
           const currentStreak = u.start_date ? differenceInDays(new Date(), parseISO(u.start_date)) : 0;
           const bestStreak = u.best_streak || 0;
           return {

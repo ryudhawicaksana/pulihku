@@ -16,6 +16,7 @@ export default function Onboarding() {
   const { login } = useUser();
   const [step, setStep] = useState(0);
   const [name, setName] = useState("");
+  const [answers, setAnswers] = useState<Record<string, string | string[]>>({});
 
   const questions = [
     {
@@ -89,14 +90,35 @@ export default function Onboarding() {
     }
   ];
 
+  const handleRadioChange = (questionId: string, value: string) => {
+    setAnswers(prev => ({ ...prev, [questionId]: value }));
+  };
+
+  const handleCheckboxChange = (questionId: string, value: string, checked: boolean) => {
+    setAnswers(prev => {
+      const current = (prev[questionId] as string[]) || [];
+      if (checked) {
+        return { ...prev, [questionId]: [...current, value] };
+      } else {
+        return { ...prev, [questionId]: current.filter(item => item !== value) };
+      }
+    });
+  };
+
   const handleNext = () => {
+    if (step > 0 && step <= questions.length) {
+      const q = questions[step - 1];
+      if (q.type === "radio" && !answers[q.id]) {
+        setAnswers(prev => ({ ...prev, [q.id]: q.options[0].value }));
+      }
+    }
     if (step <= questions.length) {
       setStep(step + 1);
     }
   };
 
   const finishOnboarding = () => {
-    login(name || "Pejuang");
+    login(name || "Pejuang", answers);
   };
 
   return (
@@ -114,7 +136,7 @@ export default function Onboarding() {
             />
           </div>
         )}
-
+ 
         <AnimatePresence mode="wait">
           {step === 0 && (
             <motion.div
@@ -170,7 +192,11 @@ export default function Onboarding() {
                   
                   <div className="mt-8 space-y-4">
                     {questions[step - 1].type === "radio" ? (
-                      <RadioGroup defaultValue={questions[step - 1].options[0].value} className="space-y-3">
+                      <RadioGroup 
+                        value={(answers[questions[step - 1].id] as string) || questions[step - 1].options[0].value} 
+                        onValueChange={(val) => handleRadioChange(questions[step - 1].id, val)}
+                        className="space-y-3"
+                      >
                         {questions[step - 1].options.map((opt) => (
                           <Label
                             key={opt.value}
@@ -190,7 +216,11 @@ export default function Onboarding() {
                             htmlFor={opt.value}
                             className="flex items-center space-x-3 space-y-0 p-4 border border-border rounded-xl cursor-pointer hover:bg-secondary/50 transition-colors [&:has([data-state=checked])]:border-primary [&:has([data-state=checked])]:bg-primary/5"
                           >
-                            <Checkbox id={opt.value} />
+                            <Checkbox 
+                              id={opt.value} 
+                              checked={((answers[questions[step - 1].id] as string[]) || []).includes(opt.value)}
+                              onCheckedChange={(checked) => handleCheckboxChange(questions[step - 1].id, opt.value, !!checked)}
+                            />
                             <span className="text-base font-medium">{opt.label}</span>
                           </Label>
                         ))}

@@ -1,15 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogTitle, DialogDescription, DialogHeader, DialogFooter } from "@/components/ui/dialog";
-import { Textarea } from "@/components/ui/textarea";
-import { Input } from "@/components/ui/input";
-import { MessageSquare, Heart, Share2, Flame, Send } from "lucide-react";
-import { useUser } from "@/components/user-provider";
-import { differenceInDays, parseISO } from "date-fns";
-import { toast } from "sonner";
+import { MessageSquare, Heart, BarChart2, Plus, Filter } from "lucide-react";
+import Image from "next/image";
 
 type Comment = {
   id: number;
@@ -20,256 +13,132 @@ type Comment = {
 type Post = {
   id: number;
   author: string;
-  streak: number;
+  avatar: string;
   time: string;
+  title: string;
   content: string;
   likes: number;
-  isLiked?: boolean;
-  comments: Comment[];
+  comments: number;
+  views: number;
 };
 
 export default function KomunitasPage() {
-  const { user } = useUser();
-  const currentStreak = user?.startDate ? differenceInDays(new Date(), parseISO(user.startDate)) : 0;
-
-  const [posts, setPosts] = useState<Post[]>([
+  const [posts] = useState<Post[]>([
     {
       id: 1,
-      author: "Pejuang #892",
-      streak: 45,
-      time: "2 jam yang lalu",
-      content: "Hari ini genap 45 hari. Sempat ada dorongan kuat semalam karena stres kerjaan, tapi berkat tombol SOS dan latihan napas, saya bisa melewati malam itu tanpa relapse. Tetap semangat semuanya!",
-      likes: 24,
-      comments: [
-        { id: 1, author: "Pejuang #221", content: "Luar biasa! Lanjutkan perjuanganmu." },
-        { id: 2, author: "Pejuang #901", content: "Wah ini sangat memotivasi, terima kasih sudah berbagi." }
-      ]
+      author: "Hunter Hersey",
+      avatar: "https://i.pravatar.cc/150?u=a042581f4e29026704d", // Random avatar placeholder
+      time: "2 hr ago",
+      title: "Reading People's story's",
+      content: "When I can I go on this tab and start reading the posts. it helps me know that I'm not alone in this journey and how people are getting over porn addiction. It also helps co...",
+      likes: 6,
+      comments: 1,
+      views: 201,
     },
     {
       id: 2,
-      author: "Pejuang #104",
-      streak: 3,
-      time: "5 jam yang lalu",
-      content: "Jatuh lagi kemarin setelah 12 hari bertahan. Rasanya kecewa banget sama diri sendiri. Tapi saya menolak menyerah. Hari ini adalah hari ke-3, kembali membangun fondasi. Mohon doanya kawan-kawan.",
-      likes: 56,
-      comments: [
-        { id: 3, author: "Pejuang #009", content: "Gagal itu wajar, yang penting adalah kemauan untuk bangkit lagi." }
-      ]
+      author: "Gabriel",
+      avatar: "https://i.pravatar.cc/150?u=a04258a2462d826712d", 
+      time: "1 hr ago",
+      title: "Day 278 - Flatlines?",
+      content: "As you go you will experience flatlines. You need to overcome these by just sticking to it.",
+      likes: 5,
+      comments: 1,
+      views: 127,
+    },
+    {
+      id: 3,
+      author: "bolton",
+      avatar: "https://i.pravatar.cc/150?u=a048581f4e29026701d",
+      time: "2 hr ago",
+      title: "feeling great",
+      content: "i haven't done anything out of order in almost a month, longer than i have ever. feeling amazing and my confidence and mental has improved so much. ...",
+      likes: 12,
+      comments: 4,
+      views: 430,
     }
   ]);
 
-  const [isWriteModalOpen, setIsWriteModalOpen] = useState(false);
-  const [newPostContent, setNewPostContent] = useState("");
-
-  const [activePost, setActivePost] = useState<Post | null>(null);
-  const [newComment, setNewComment] = useState("");
-
-  const handleLike = (postId: number) => {
-    setPosts(posts.map(p => {
-      if (p.id === postId) {
-        const isCurrentlyLiked = p.isLiked;
-        return {
-          ...p,
-          isLiked: !isCurrentlyLiked,
-          likes: isCurrentlyLiked ? p.likes - 1 : p.likes + 1
-        };
-      }
-      return p;
-    }));
-  };
-
-  const handlePostSubmit = () => {
-    if (!newPostContent.trim()) return;
-
-    const newPost: Post = {
-      id: Date.now(),
-      author: `Pejuang #${Math.floor(Math.random() * 900) + 100}`, // random id
-      streak: currentStreak,
-      time: "Baru saja",
-      content: newPostContent,
-      likes: 0,
-      comments: []
-    };
-
-    setPosts([newPost, ...posts]);
-    setNewPostContent("");
-    setIsWriteModalOpen(false);
-    toast.success("Cerita Anda berhasil dibagikan secara anonim.");
-  };
-
-  const handleCommentSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newComment.trim() || !activePost) return;
-
-    const comment: Comment = {
-      id: Date.now(),
-      author: `Pejuang #${Math.floor(Math.random() * 900) + 100}`,
-      content: newComment
-    };
-
-    setPosts(posts.map(p => {
-      if (p.id === activePost.id) {
-        return {
-          ...p,
-          comments: [...p.comments, comment]
-        };
-      }
-      return p;
-    }));
-
-    // Update active post to reflect the new comment instantly in the modal
-    setActivePost({
-      ...activePost,
-      comments: [...activePost.comments, comment]
-    });
-
-    setNewComment("");
-  };
-
   return (
-    <div className="flex flex-col gap-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <div className="flex flex-col md:flex-row gap-4 md:items-end justify-between">
+    <div className="flex flex-col h-full animate-in fade-in duration-500 pt-8 pb-10">
+      <div className="flex justify-between items-start mb-6">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight mb-2">Komunitas</h1>
-          <p className="text-muted-foreground text-lg">Kamu tidak berjuang sendirian. Bagikan ceritamu secara anonim.</p>
+          <h1 className="text-4xl font-bold tracking-tight mb-2">Community</h1>
+          <p className="text-xl text-foreground/80">Meet like-minded people.</p>
         </div>
-        <Button 
-          className="w-full md:w-auto h-12 rounded-xl px-8 shadow-md"
-          onClick={() => setIsWriteModalOpen(true)}
-        >
-          Tulis Cerita
-        </Button>
-      </div>
-
-      <div className="max-w-2xl w-full mx-auto space-y-6">
-        {posts.map((post) => (
-          <Card key={post.id} className="border-border">
-            <CardHeader className="pb-3">
-              <div className="flex justify-between items-start">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center font-bold text-sm">
-                    {post.author.split('#')[1]?.substring(0,2)}
-                  </div>
-                  <div>
-                    <CardTitle className="text-base font-semibold">{post.author}</CardTitle>
-                    <p className="text-xs text-muted-foreground">{post.time}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-1 bg-primary/10 text-primary px-3 py-1 rounded-full text-sm font-medium">
-                  <Flame className="w-4 h-4" /> {post.streak} Hari
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <p className="leading-relaxed">{post.content}</p>
-              
-              <div className="flex items-center gap-6 mt-6 text-muted-foreground">
-                <button 
-                  className={`flex items-center gap-2 hover:text-primary transition-colors ${post.isLiked ? 'text-rose-500' : ''}`}
-                  onClick={() => handleLike(post.id)}
-                >
-                  <Heart className={`w-5 h-5 ${post.isLiked ? 'fill-current' : ''}`} />
-                  <span className="text-sm font-medium">{post.likes}</span>
-                </button>
-                <button 
-                  className="flex items-center gap-2 hover:text-primary transition-colors"
-                  onClick={() => setActivePost(post)}
-                >
-                  <MessageSquare className="w-5 h-5" />
-                  <span className="text-sm font-medium">{post.comments.length}</span>
-                </button>
-                <button 
-                  className="flex items-center gap-2 hover:text-primary transition-colors ml-auto"
-                  onClick={() => toast.success("Tautan cerita telah disalin.")}
-                >
-                  <Share2 className="w-5 h-5" />
-                </button>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      {/* Modal Tulis Cerita */}
-      <Dialog open={isWriteModalOpen} onOpenChange={setIsWriteModalOpen}>
-        <DialogContent className="sm:max-w-xl">
-          <DialogHeader>
-            <DialogTitle>Tulis Cerita Anonim</DialogTitle>
-            <DialogDescription>
-              Bagikan perjuangan, keluh kesah, atau kemenanganmu hari ini. Identitasmu tidak akan dipublikasikan.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="mt-4">
-            <Textarea 
-              placeholder="Ceritakan sesuatu..." 
-              className="min-h-[150px] resize-none"
-              value={newPostContent}
-              onChange={(e) => setNewPostContent(e.target.value)}
-            />
+        <div className="flex items-center gap-4">
+          <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center">
+             <div className="w-4 h-4 border-2 border-white/70 rounded-full flex items-center justify-center">
+               <div className="w-1.5 h-1.5 bg-white/70 rounded-full" />
+             </div>
           </div>
-          <DialogFooter className="mt-4">
-            <Button variant="outline" onClick={() => setIsWriteModalOpen(false)}>Batal</Button>
-            <Button onClick={handlePostSubmit} disabled={!newPostContent.trim()}>Bagikan</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center relative">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 text-white/70"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+            <div className="absolute top-1.5 right-1.5 w-2 h-2 bg-destructive rounded-full border border-background" />
+          </div>
+          <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 text-white/70"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+          </div>
+        </div>
+      </div>
 
-      {/* Modal Komentar */}
-      <Dialog open={activePost !== null} onOpenChange={(open) => !open && setActivePost(null)}>
-        <DialogContent className="sm:max-w-xl max-h-[90vh] flex flex-col">
-          <DialogHeader>
-            <DialogTitle>Komentar</DialogTitle>
-          </DialogHeader>
-          
-          {activePost && (
-            <>
-              {/* Post Asli */}
-              <div className="border-b pb-4 mb-4">
-                <div className="flex items-center gap-3 mb-2">
-                  <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center font-bold text-xs">
-                    {activePost.author.split('#')[1]?.substring(0,2)}
+      <div className="mb-6">
+        <button className="flex items-center gap-2 text-sm text-white/70 font-medium">
+          <Filter className="w-4 h-4" /> Filter: Popular <svg width="10" height="6" viewBox="0 0 10 6" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M1 1L5 5L9 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+        </button>
+      </div>
+
+      <div className="flex-1 overflow-y-auto hide-scrollbar -mx-5 px-5">
+        <div className="space-y-6">
+          {posts.map((post) => (
+            <div key={post.id} className="border-b border-white/10 pb-6 last:border-0">
+              <div className="flex gap-4">
+                <div className="shrink-0">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={post.avatar} alt={post.author} className="w-12 h-12 rounded-full object-cover" />
+                </div>
+                <div className="flex-1">
+                  <div className="flex justify-between items-start mb-1">
+                    <div>
+                      <span className="font-bold text-white mr-2">{post.author}</span>
+                      <span className="text-white/40 text-sm">· {post.time}</span>
+                    </div>
+                    <button className="text-white/40 hover:text-white transition-colors">
+                      <svg width="16" height="4" viewBox="0 0 16 4" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <circle cx="2" cy="2" r="2" fill="currentColor"/>
+                        <circle cx="8" cy="2" r="2" fill="currentColor"/>
+                        <circle cx="14" cy="2" r="2" fill="currentColor"/>
+                      </svg>
+                    </button>
                   </div>
-                  <div>
-                    <h4 className="font-semibold text-sm">{activePost.author}</h4>
+                  <h3 className="font-bold text-lg mb-2">{post.title}</h3>
+                  <p className="text-white/70 text-sm leading-relaxed mb-2">
+                    {post.content}
+                  </p>
+                  <button className="text-white/40 text-sm mb-4 hover:text-white transition-colors">See more</button>
+                  
+                  <div className="flex items-center gap-6 text-white/50 text-sm font-medium">
+                    <button className="flex items-center gap-1.5 hover:text-white transition-colors">
+                      <MessageSquare className="w-4 h-4" /> {post.comments}
+                    </button>
+                    <button className="flex items-center gap-1.5 hover:text-white transition-colors">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg> {post.likes}
+                    </button>
+                    <button className="flex items-center gap-1.5 hover:text-white transition-colors">
+                      <BarChart2 className="w-4 h-4" /> {post.views}
+                    </button>
                   </div>
                 </div>
-                <p className="text-sm text-foreground/90">{activePost.content}</p>
               </div>
+            </div>
+          ))}
+        </div>
+      </div>
 
-              {/* List Komentar */}
-              <div className="flex-1 overflow-y-auto space-y-4 pr-2 mb-4">
-                {activePost.comments.length === 0 ? (
-                  <p className="text-center text-muted-foreground text-sm my-8">Belum ada komentar. Jadilah yang pertama!</p>
-                ) : (
-                  activePost.comments.map((comment) => (
-                    <div key={comment.id} className="flex gap-3">
-                      <div className="w-8 h-8 shrink-0 rounded-full bg-primary/10 flex items-center justify-center font-bold text-xs text-primary">
-                        {comment.author.split('#')[1]?.substring(0,2)}
-                      </div>
-                      <div className="bg-secondary p-3 rounded-xl rounded-tl-sm w-full">
-                        <h5 className="font-semibold text-xs mb-1">{comment.author}</h5>
-                        <p className="text-sm">{comment.content}</p>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-
-              {/* Form Tambah Komentar */}
-              <form className="flex gap-2 pt-2" onSubmit={handleCommentSubmit}>
-                <Input 
-                  placeholder="Tulis balasan anonim..." 
-                  value={newComment}
-                  onChange={(e) => setNewComment(e.target.value)}
-                />
-                <Button type="submit" size="icon" disabled={!newComment.trim()}>
-                  <Send className="w-4 h-4" />
-                </Button>
-              </form>
-            </>
-          )}
-        </DialogContent>
-      </Dialog>
+      {/* Floating Action Button */}
+      <button className="fixed bottom-24 right-6 w-14 h-14 bg-primary text-white rounded-full flex items-center justify-center shadow-lg shadow-primary/25 hover:scale-105 active:scale-95 transition-all z-40">
+        <Plus className="w-6 h-6" />
+      </button>
     </div>
   );
 }

@@ -9,11 +9,12 @@ type UserData = {
   hasCompletedOnboarding: boolean;
   relapseCount: number;
   avatar?: string;
+  answers?: Record<string, string | string[]>;
 };
 
 type UserContextType = {
   user: UserData | null;
-  login: (name: string) => void;
+  login: (name: string, answers?: Record<string, string | string[]>) => void;
   logout: () => void;
   recordRelapse: () => void;
   updateProfile: (name: string, avatar: string) => void;
@@ -46,13 +47,14 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     }
   }, [user, pathname, isLoading, router]);
 
-  const login = (name: string) => {
+  const login = (name: string, answers?: Record<string, string | string[]>) => {
     const newUser: UserData = {
       name,
       startDate: new Date().toISOString(),
       hasCompletedOnboarding: true,
       relapseCount: 0,
       avatar: "🌱",
+      answers,
     };
     localStorage.setItem("pulihku_user", JSON.stringify(newUser));
     setUser(newUser);

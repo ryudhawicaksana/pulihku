@@ -1,33 +1,52 @@
 "use client";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Activity, Flame, ArrowUpRight, ArrowDownRight, Flag } from "lucide-react";
 import { useUser } from "@/components/user-provider";
 import { differenceInDays, parseISO } from "date-fns";
 import { useState } from "react";
-import { toast } from "sonner";
-import { Dialog, DialogContent, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { CheckCircle2, User as UserIcon, Flag, Activity, Flame, ArrowUpRight, ArrowDownRight } from "lucide-react";
 import {
-  BarChart,
-  Bar,
+  LineChart,
+  Line,
   XAxis,
-  YAxis,
+  ResponsiveContainer,
+  BarChart,
   CartesianGrid,
+  YAxis,
   Tooltip,
-  ResponsiveContainer
+  Bar
 } from "recharts";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { toast } from "sonner";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default function JejakPulih() {
   const { user, recordRelapse } = useUser();
+  const [activeTab, setActiveTab] = useState("Overview");
   const [isRelapseModalOpen, setIsRelapseModalOpen] = useState(false);
 
   const streak = user?.startDate ? differenceInDays(new Date(), parseISO(user.startDate)) : 0;
   const totalRelapse = user?.relapseCount || 0;
   const successRate = Math.max(0, 100 - (totalRelapse * 4));
+  
+  // Fake chart data for the progress line
+  const lineChartData = [
+    { name: "Day 1", value: 10 },
+    { name: "Day 2", value: 20 },
+    { name: "Day 3", value: 30 },
+    { name: "Day 4", value: 40 },
+    { name: "Day 5", value: 50 },
+    { name: "Day 6", value: 60, relapse: true },
+    { name: "Day 7", value: 10 },
+    { name: "Day 8", value: 20 },
+    { name: "Day 9", value: 30 },
+    { name: "Day 10", value: 40 },
+    { name: "Day 11", value: 50 },
+    { name: "Day 12", value: 60 },
+  ];
 
-  // Generate 6 months of data ending in the current month
-  const chartData = Array.from({ length: 6 }).map((_, i) => {
+  // Generate 6 months of data ending in the current month for Stats
+  const barChartData = Array.from({ length: 6 }).map((_, i) => {
     const d = new Date();
     d.setMonth(d.getMonth() - (5 - i));
     const isCurrentMonth = i === 5;
@@ -39,15 +58,15 @@ export default function JejakPulih() {
   });
 
   return (
-    <div className="flex flex-col gap-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div className="flex flex-col h-full animate-in fade-in duration-500 pt-8 max-w-2xl mx-auto w-full">
       <Dialog open={isRelapseModalOpen} onOpenChange={setIsRelapseModalOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md bg-card border-white/10 text-foreground">
           <DialogTitle>Catat Relapse</DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="text-muted-foreground">
             Tidak apa-apa, setiap perjalanan pasti ada kerikilnya. Apakah Anda yakin ingin mencatat relapse dan mengatur ulang streak Anda?
           </DialogDescription>
           <DialogFooter className="flex gap-2 sm:justify-end mt-4">
-            <Button variant="outline" onClick={() => setIsRelapseModalOpen(false)}>
+            <Button variant="outline" className="border-white/20 hover:bg-white/10" onClick={() => setIsRelapseModalOpen(false)}>
               Batal
             </Button>
             <Button variant="destructive" onClick={() => {
@@ -60,118 +79,239 @@ export default function JejakPulih() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      <div className="flex flex-col md:flex-row gap-6 md:items-end justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight mb-2">Jejak Pulih</h1>
-          <p className="text-muted-foreground text-lg">Lihat seberapa jauh kamu telah melangkah.</p>
-        </div>
-        <div className="flex gap-3 w-full md:w-auto">
-          <Button 
-            variant="outline" 
-            className="flex-1 md:flex-none h-12 px-6 rounded-xl border-2"
-            onClick={() => toast.success("Semua riwayat check-in Anda aman! Teruskan perjuangan.")}
-          >
-            Riwayat Check-in
-          </Button>
-          <Button 
-            variant="destructive" 
-            className="flex-1 md:flex-none h-12 px-6 rounded-xl shadow-md"
-            onClick={() => setIsRelapseModalOpen(true)}
-          >
-            <Flag className="w-5 h-5 mr-2" />
-            Catat Relapse
-          </Button>
+
+      {/* Header */}
+      <div className="text-center mb-8 relative">
+        <h1 className="text-3xl font-bold tracking-tight">Overcome Urges</h1>
+        <p className="text-xl text-foreground/80 mt-1">and Recover.</p>
+        <Button 
+          variant="destructive" 
+          size="sm"
+          className="absolute right-0 top-0 rounded-full shadow-md shadow-destructive/20"
+          onClick={() => setIsRelapseModalOpen(true)}
+        >
+          <Flag className="w-4 h-4 mr-2" />
+          Catat Relapse
+        </Button>
+      </div>
+
+      {/* Title & Tabs */}
+      <div className="mb-8">
+        <h2 className="text-3xl font-bold mb-4">Analytics</h2>
+        <div className="flex gap-6 border-b border-white/10 pb-2">
+          {["Overview", "Stats", "Mood"].map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`text-sm font-medium transition-colors relative ${
+                activeTab === tab ? "text-white" : "text-white/40 hover:text-white/70"
+              }`}
+            >
+              {tab}
+              {activeTab === tab && (
+                <div className="absolute -bottom-[9px] left-0 right-0 h-[2px] bg-white rounded-t-full" />
+              )}
+            </button>
+          ))}
         </div>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex justify-between items-start mb-2">
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <Flame className="w-5 h-5 text-primary" />
-                <h3 className="font-medium">Streak Saat Ini</h3>
+      {activeTab === "Overview" && (
+        <>
+          {/* Circular Progress */}
+          <div className="flex flex-col items-center justify-center mb-10 relative">
+            <div className="relative w-64 h-64 flex items-center justify-center">
+              {/* Background Circle */}
+              <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+                <circle
+                  cx="50"
+                  cy="50"
+                  r="45"
+                  fill="transparent"
+                  stroke="rgba(255,255,255,0.05)"
+                  strokeWidth="8"
+                />
+                {/* Progress Circle (Primary Purple) */}
+                <circle
+                  cx="50"
+                  cy="50"
+                  r="45"
+                  fill="transparent"
+                  stroke="var(--color-primary)"
+                  strokeWidth="8"
+                  strokeDasharray="283"
+                  strokeDashoffset={283 - (283 * Math.min(streak, 30)) / 30} // Assuming 30 days is full circle for this view
+                  strokeLinecap="round"
+                  className="transition-all duration-1000 ease-out"
+                />
+                {/* Dashed outer ring for 'BREAKTHROUGH' */}
+                <circle
+                  cx="50"
+                  cy="50"
+                  r="52"
+                  fill="transparent"
+                  stroke="rgba(255,255,255,0.2)"
+                  strokeWidth="1"
+                  strokeDasharray="4 4"
+                />
+              </svg>
+              
+              <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
+                <span className="text-xs font-bold tracking-widest text-white/60 mb-1">DAYS CLEAN</span>
+                <span className="text-6xl font-bold">{streak}d</span>
+                <span className="text-xs font-bold tracking-widest text-white/40 mt-2">DETERMINED</span>
+              </div>
+
+              {/* Breakthrough Marker */}
+              <div className="absolute bottom-1 right-16 flex flex-col items-center">
+                <div className="bg-white rounded-full p-0.5">
+                  <CheckCircle2 className="w-4 h-4 text-black" />
+                </div>
+                <span className="text-[10px] text-white/40 mt-1 rotate-12 -ml-4">BREAKTHROUGH</span>
               </div>
             </div>
-            <p className="text-4xl font-bold mb-2">{streak}</p>
-            <div className="flex items-center text-sm text-primary font-medium">
-              <ArrowUpRight className="w-4 h-4 mr-1" />
-              <span>Lebih baik dari bulan lalu</span>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex justify-between items-start mb-2">
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <Activity className="w-5 h-5" />
-                <h3 className="font-medium">Total Relapse</h3>
-              </div>
-            </div>
-            <p className="text-4xl font-bold mb-2">{totalRelapse}</p>
-            <div className="flex items-center text-sm text-primary font-medium">
-              <ArrowDownRight className="w-4 h-4 mr-1" />
-              <span>Menurun 50%</span>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="col-span-2">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-lg">Tingkat Kesuksesan (Bulan Ini)</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-end gap-4">
-              <div className="text-5xl font-bold text-primary">{successRate}%</div>
-              <p className="text-muted-foreground pb-1">Hari tanpa relapse</p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Statistik Bulanan</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="h-[300px] w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={chartData} margin={{ top: 20, right: 0, left: -20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--muted))" />
-                <XAxis 
-                  dataKey="name" 
-                  axisLine={false}
-                  tickLine={false}
-                  tick={{ fill: "var(--color-muted-foreground)" }}
-                  dy={10}
-                />
-                <YAxis 
-                  axisLine={false}
-                  tickLine={false}
-                  tick={{ fill: "var(--color-muted-foreground)" }}
-                />
-                <Tooltip 
-                  cursor={{ fill: "var(--color-muted)" }}
-                  contentStyle={{ borderRadius: "12px", border: "none", boxShadow: "0 10px 15px -3px rgb(0 0 0 / 0.1)" }}
-                />
-                <Bar 
-                  dataKey="sukses" 
-                  name="Berhasil" 
-                  fill="var(--color-primary)" 
-                  radius={[4, 4, 0, 0]} 
-                />
-                <Bar 
-                  dataKey="relapse" 
-                  name="Relapse" 
-                  fill="var(--color-destructive)" 
-                  radius={[4, 4, 0, 0]} 
-                />
-              </BarChart>
-            </ResponsiveContainer>
           </div>
-        </CardContent>
-      </Card>
+
+          {/* AI Therapist Button */}
+          <button className="w-full bg-[#1a1a1c] hover:bg-[#252528] transition-colors rounded-2xl p-4 flex items-center gap-3 border border-white/5 mb-8">
+            <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center">
+              <UserIcon className="w-4 h-4 text-white/70" />
+            </div>
+            <span className="text-sm text-white/60">Speak to Melius your AI Therapist...</span>
+          </button>
+
+          {/* Progress Chart */}
+          <div className="flex-1">
+            <div className="flex flex-col mb-4">
+              <h3 className="font-bold text-base">Progress:</h3>
+              <div className="flex items-center text-xs text-destructive mt-1">
+                <span className="font-bold mr-1">X</span> - Relapse
+              </div>
+            </div>
+            
+            <div className="h-32 w-full relative">
+              {/* Subtle grid background */}
+              <div className="absolute inset-0 grid grid-cols-6 border-b border-white/10">
+                {[...Array(6)].map((_, i) => (
+                  <div key={i} className="border-r border-white/5 h-full" />
+                ))}
+              </div>
+              
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={lineChartData} margin={{ top: 10, right: 0, left: 0, bottom: 0 }}>
+                  <XAxis dataKey="name" hide />
+                  <Line 
+                    type="linear" 
+                    dataKey="value" 
+                    stroke="var(--color-primary)" 
+                    strokeWidth={3}
+                    dot={(props: any) => {
+                      const { cx, cy, payload } = props;
+                      if (payload.relapse) {
+                        return (
+                          <g key={`dot-${payload.name}`}>
+                            <text x={cx} y={cy} dy={5} dx={-5} fill="var(--color-destructive)" fontSize="12" fontWeight="bold">X</text>
+                          </g>
+                        );
+                      }
+                      if (payload.name === 'Day 12') { // Last point arrow
+                        return (
+                          <g key={`arrow-${payload.name}`}>
+                            <path d={`M${cx-4},${cy-4} L${cx+4},${cy} L${cx-4},${cy+4} Z`} fill="var(--color-primary)" transform={`rotate(-45 ${cx} ${cy})`} />
+                          </g>
+                        );
+                      }
+                      return <g key={`dot-${payload.name}`}></g>;
+                    }}
+                    isAnimationActive={false}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        </>
+      )}
+
+      {activeTab === "Stats" && (
+        <div className="animate-in fade-in duration-300">
+          <div className="grid grid-cols-2 gap-4 mb-6">
+            <Card className="bg-card border-white/5">
+              <CardContent className="p-6">
+                <div className="flex justify-between items-start mb-2">
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <Activity className="w-5 h-5 text-primary" />
+                    <h3 className="font-medium">Total Relapse</h3>
+                  </div>
+                </div>
+                <p className="text-4xl font-bold mb-2">{totalRelapse}</p>
+                <div className="flex items-center text-sm text-primary font-medium">
+                  <ArrowDownRight className="w-4 h-4 mr-1" />
+                  <span>Menurun</span>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-card border-white/5">
+              <CardContent className="p-6">
+                <div className="flex justify-between items-start mb-2">
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <Flame className="w-5 h-5 text-primary" />
+                    <h3 className="font-medium">Kesuksesan</h3>
+                  </div>
+                </div>
+                <p className="text-4xl font-bold mb-2">{successRate}%</p>
+                <div className="flex items-center text-sm text-primary font-medium">
+                  <ArrowUpRight className="w-4 h-4 mr-1" />
+                  <span>Hari bersih</span>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          <Card className="bg-card border-white/5">
+            <CardHeader>
+              <CardTitle>Statistik Bulanan</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="h-[300px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={barChartData} margin={{ top: 20, right: 0, left: -20, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.1)" />
+                    <XAxis 
+                      dataKey="name" 
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{ fill: "rgba(255,255,255,0.5)" }}
+                      dy={10}
+                    />
+                    <YAxis 
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{ fill: "rgba(255,255,255,0.5)" }}
+                    />
+                    <Tooltip 
+                      cursor={{ fill: "rgba(255,255,255,0.05)" }}
+                      contentStyle={{ backgroundColor: "var(--color-card)", borderRadius: "12px", border: "1px solid rgba(255,255,255,0.1)", color: "white" }}
+                    />
+                    <Bar 
+                      dataKey="sukses" 
+                      name="Berhasil" 
+                      fill="var(--color-primary)" 
+                      radius={[4, 4, 0, 0]} 
+                    />
+                    <Bar 
+                      dataKey="relapse" 
+                      name="Relapse" 
+                      fill="var(--color-destructive)" 
+                      radius={[4, 4, 0, 0]} 
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   );
 }

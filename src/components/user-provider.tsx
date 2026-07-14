@@ -17,12 +17,13 @@ type UserData = {
 type UserContextType = {
   user: UserData | null;
   login: (name: string, answers?: Record<string, string | string[]>) => Promise<void>;
-  signInWithGoogle: () => Promise<void>;
+  sendOtpCode: (email: string) => Promise<{ success: boolean; error?: string }>;
+  verifyOtpCode: (email: string, token: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
   recordRelapse: () => void;
   updateProfile: (name: string, avatar: string) => void;
   isLoading: boolean;
-  isGoogleAuthenticated: boolean;
+  isAuthenticated: boolean;
 };
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
@@ -30,13 +31,13 @@ const UserContext = createContext<UserContextType | undefined>(undefined);
 export function UserProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<UserData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isGoogleAuthenticated, setIsGoogleAuthenticated] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
 
   const handleSession = async (session: any) => {
     if (session?.user) {
-      setIsGoogleAuthenticated(true);
+      setIsAuthenticated(true);
       const { data, error } = await supabase
         .from("users_pemulihan")
         .select("*")
@@ -60,7 +61,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         localStorage.removeItem("pulihku_user");
       }
     } else {
-      setIsGoogleAuthenticated(false);
+      setIsAuthenticated(false);
       setUser(null);
       localStorage.removeItem("pulihku_user");
     }
@@ -91,17 +92,34 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     }
   }, [user, pathname, isLoading, router]);
 
-  const signInWithGoogle = async () => {
+  const sendOtpCode = async (email: string): Promise<{ success: boolean; error?: string }> => {
     const origin = typeof window !== "undefined" ? window.location.origin : "";
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
       options: {
-        redirectTo: `${origin}/onboarding`,
-      },
+        emailRedirectTo: `${origin}/onboarding`,
+      }
     });
+
     if (error) {
-      console.error("Error signing in with Google:", error);
+      console.error("Error sending OTP:", error);
+      return { success: false, error: error.message };
     }
+    return { success: true };
+  };
+
+  const verifyOtpCode = async (email: string, token: string): Promise<{ success: boolean; error?: string }> => {
+    const { error } = await supabase.auth.verifyOtp({
+      email,
+      token,
+      type: "email",
+    });
+
+    if (error) {
+      console.error("Error verifying OTP:", error);
+      return { success: false, error: error.message };
+    }
+    return { success: true };
   };
 
   const login = async (name: string, answers?: Record<string, string | string[]>) => {
@@ -189,7 +207,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <UserContext.Provider value={{ user, login, signInWithGoogle, logout, recordRelapse, updateProfile, isLoading, isGoogleAuthenticated }}>
+    <UserContext.Provider value={{ user, login, sendOtpCode, verifyOtpCode, logout, recordRelapse, updateProfile, isLoading, isAuthenticated }}>
       {/* Jika masih loading atau user belum login (tapi bukan di halaman onboarding), jangan render anak-anak untuk mencegah flash konten */}
       {!isLoading && (user || pathname === "/onboarding") ? children : null}
     </UserContext.Provider>

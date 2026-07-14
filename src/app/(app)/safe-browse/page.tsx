@@ -74,15 +74,15 @@ export default function SafeBrowsePage() {
             <CardContent>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div className="bg-secondary p-4 rounded-xl text-center">
-                  <p className="text-3xl font-bold text-destructive mb-1">98</p>
+                  <p className="text-3xl font-bold text-destructive mb-1">124</p>
                   <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Total Situs</p>
                 </div>
                 <div className="bg-secondary p-4 rounded-xl text-center">
-                  <p className="text-3xl font-bold text-destructive mb-1">31</p>
+                  <p className="text-3xl font-bold text-destructive mb-1">48</p>
                   <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Video Porn</p>
                 </div>
                 <div className="bg-secondary p-4 rounded-xl text-center">
-                  <p className="text-3xl font-bold text-destructive mb-1">13</p>
+                  <p className="text-3xl font-bold text-destructive mb-1">21</p>
                   <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Premium</p>
                 </div>
                 <div className="bg-secondary p-4 rounded-xl text-center">
@@ -90,11 +90,11 @@ export default function SafeBrowsePage() {
                   <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Live Cam</p>
                 </div>
                 <div className="bg-secondary p-4 rounded-xl text-center">
-                  <p className="text-3xl font-bold text-destructive mb-1">14</p>
+                  <p className="text-3xl font-bold text-destructive mb-1">16</p>
                   <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Hentai</p>
                 </div>
                 <div className="bg-secondary p-4 rounded-xl text-center">
-                  <p className="text-3xl font-bold text-destructive mb-1">10</p>
+                  <p className="text-3xl font-bold text-destructive mb-1">5</p>
                   <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Image Boards</p>
                 </div>
                 <div className="bg-secondary p-4 rounded-xl text-center">
@@ -102,7 +102,7 @@ export default function SafeBrowsePage() {
                   <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">AI Adult</p>
                 </div>
                 <div className="bg-secondary p-4 rounded-xl text-center">
-                  <p className="text-3xl font-bold text-destructive mb-1">11</p>
+                  <p className="text-3xl font-bold text-destructive mb-1">15</p>
                   <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Lainnya</p>
                 </div>
               </div>

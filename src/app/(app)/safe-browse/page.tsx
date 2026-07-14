@@ -41,20 +41,27 @@ export default function SafeBrowsePage() {
               <div className="bg-background p-4 rounded-xl border flex items-start gap-3">
                 <Info className="w-5 h-5 text-blue-500 shrink-0 mt-0.5" />
                 <div>
-                  <h4 className="font-medium text-sm">Cara Pemasangan:</h4>
-                  <ol className="list-decimal pl-4 text-sm text-muted-foreground mt-1 space-y-1">
-                    <li>Buka folder <code>pulihku-extension</code> di proyek ini.</li>
-                    <li>Buka browser Chrome/Edge dan masuk ke halaman <strong>Extensions &gt; Manage Extensions</strong>.</li>
-                    <li>Aktifkan <strong>Developer Mode</strong> di pojok kanan atas.</li>
-                    <li>Klik <strong>Load unpacked</strong> dan pilih folder <code>pulihku-extension</code>.</li>
+                  <h4 className="font-medium text-sm">Cara Pemasangan di Google Chrome:</h4>
+                  <ol className="list-decimal pl-4 text-sm text-muted-foreground mt-1 space-y-2">
+                    <li>Klik tombol **Unduh Ekstensi Pulihku** di bawah untuk mengunduh file <code>.zip</code>.</li>
+                    <li>Ekstrak (unzip) file yang telah diunduh di komputer Anda.</li>
+                    <li>Buka browser Chrome dan ketik <code>chrome://extensions/</code> pada bilah alamat lalu tekan Enter.</li>
+                    <li>Aktifkan <strong>Developer Mode</strong> (Mode Pengembang) di pojok kanan atas halaman ekstensi Chrome.</li>
+                    <li>Klik tombol <strong>Load unpacked</strong> (Muat ekstensi tidak dikemas) di pojok kiri atas.</li>
+                    <li>Pilih folder hasil ekstrak file zip tadi (folder <code>pulihku-extension</code>).</li>
                   </ol>
                 </div>
               </div>
             </CardContent>
             <CardFooter>
-              <Button className="w-full gap-2 text-lg h-12">
+              <Button 
+                className="w-full gap-2 text-lg h-12"
+                onClick={() => {
+                  window.location.href = "/pulihku-extension.zip";
+                }}
+              >
                 <Download className="w-5 h-5" />
-                Saya Mengerti, Pasang Ekstensi
+                Unduh Ekstensi Pulihku (.zip)
               </Button>
             </CardFooter>
           </Card>

@@ -16,11 +16,13 @@ type UserData = {
 
 type UserContextType = {
   user: UserData | null;
-  login: (name: string, answers?: Record<string, string | string[]>) => void;
-  logout: () => void;
+  login: (name: string, answers?: Record<string, string | string[]>) => Promise<void>;
+  signInWithGoogle: () => Promise<void>;
+  logout: () => Promise<void>;
   recordRelapse: () => void;
   updateProfile: (name: string, avatar: string) => void;
   isLoading: boolean;
+  isGoogleAuthenticated: boolean;
 };
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
@@ -28,15 +30,55 @@ const UserContext = createContext<UserContextType | undefined>(undefined);
 export function UserProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<UserData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isGoogleAuthenticated, setIsGoogleAuthenticated] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
 
-  useEffect(() => {
-    const stored = localStorage.getItem("pulihku_user");
-    if (stored) {
-      setUser(JSON.parse(stored));
+  const handleSession = async (session: any) => {
+    if (session?.user) {
+      setIsGoogleAuthenticated(true);
+      const { data, error } = await supabase
+        .from("users_pemulihan")
+        .select("*")
+        .eq("id", session.user.id)
+        .single();
+      
+      if (data) {
+        const userData: UserData = {
+          id: data.id,
+          name: data.name,
+          startDate: data.start_date,
+          hasCompletedOnboarding: true,
+          relapseCount: data.relapse_count,
+          avatar: data.avatar,
+          answers: data.answers,
+        };
+        setUser(userData);
+        localStorage.setItem("pulihku_user", JSON.stringify(userData));
+      } else {
+        setUser(null);
+        localStorage.removeItem("pulihku_user");
+      }
+    } else {
+      setIsGoogleAuthenticated(false);
+      setUser(null);
+      localStorage.removeItem("pulihku_user");
     }
     setIsLoading(false);
+  };
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      handleSession(session);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      handleSession(session);
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
   useEffect(() => {
@@ -49,12 +91,47 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     }
   }, [user, pathname, isLoading, router]);
 
-  const login = (name: string, answers?: Record<string, string | string[]>) => {
-    const id = crypto.randomUUID();
+  const signInWithGoogle = async () => {
+    const origin = typeof window !== "undefined" ? window.location.origin : "";
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: `${origin}/onboarding`,
+      },
+    });
+    if (error) {
+      console.error("Error signing in with Google:", error);
+    }
+  };
+
+  const login = async (name: string, answers?: Record<string, string | string[]>) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user) {
+      console.error("No authenticated user found.");
+      return;
+    }
+
+    const id = session.user.id;
+    const startDate = new Date().toISOString();
+    
+    const { error } = await supabase.from("users_pemulihan").insert({
+      id,
+      name,
+      start_date: startDate,
+      relapse_count: 0,
+      avatar: "🌱",
+      answers,
+    });
+
+    if (error) {
+      console.error("Error saving to Supabase:", error);
+      return;
+    }
+
     const newUser: UserData = {
       id,
       name,
-      startDate: new Date().toISOString(),
+      startDate,
       hasCompletedOnboarding: true,
       relapseCount: 0,
       avatar: "🌱",
@@ -62,23 +139,11 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     };
     localStorage.setItem("pulihku_user", JSON.stringify(newUser));
     setUser(newUser);
-
-    // Sync to Supabase
-    supabase.from("users_pemulihan").insert({
-      id,
-      name,
-      start_date: newUser.startDate,
-      relapse_count: 0,
-      avatar: "🌱",
-      answers,
-    }).then(({ error }) => {
-      if (error) console.error("Error saving to Supabase:", error);
-    });
-
     router.push("/");
   };
 
-  const logout = () => {
+  const logout = async () => {
+    await supabase.auth.signOut();
     localStorage.removeItem("pulihku_user");
     setUser(null);
     router.push("/onboarding");
@@ -124,7 +189,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <UserContext.Provider value={{ user, login, logout, recordRelapse, updateProfile, isLoading }}>
+    <UserContext.Provider value={{ user, login, signInWithGoogle, logout, recordRelapse, updateProfile, isLoading, isGoogleAuthenticated }}>
       {/* Jika masih loading atau user belum login (tapi bukan di halaman onboarding), jangan render anak-anak untuk mencegah flash konten */}
       {!isLoading && (user || pathname === "/onboarding") ? children : null}
     </UserContext.Provider>

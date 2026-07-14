@@ -11,6 +11,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { HeartHandshake, Leaf, ArrowRight, ShieldCheck, Sparkles } from "lucide-react";
 import { useUser } from "@/components/user-provider";
+import { Logo } from "@/components/layout/logo";
 
 export default function Onboarding() {
   const { login, signUpWithEmailPassword, signInWithEmailPassword, isAuthenticated } = useUser();
@@ -201,8 +202,8 @@ export default function Onboarding() {
               exit={{ opacity: 0, y: -20 }}
               className="text-center space-y-6 w-full max-w-xl mx-auto flex flex-col items-center"
             >
-              <div className="w-24 h-24 bg-primary/10 rounded-3xl flex items-center justify-center mx-auto mb-8">
-                <Leaf className="w-12 h-12 text-primary" />
+              <div className="flex items-center justify-center mx-auto mb-8">
+                <Logo className="w-20 h-20" />
               </div>
               <h1 className="text-4xl font-bold tracking-tight text-center">Selamat Datang di Pulihku</h1>
               

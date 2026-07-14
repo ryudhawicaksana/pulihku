@@ -13,6 +13,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useUser } from "@/components/user-provider";
 import { differenceInDays, parseISO } from "date-fns";
+import { Logo } from "@/components/layout/logo";
 
 const navItems = [
   { name: "Beranda", href: "/", icon: Home },
@@ -37,9 +38,7 @@ export function Sidebar() {
   return (
     <aside className="hidden md:flex flex-col w-64 border-r border-border bg-card px-4 pt-6 pb-10 h-screen sticky top-0 overflow-y-auto">
       <div className="flex items-center gap-3 px-2 mb-8">
-        <div className="w-8 h-8 rounded-xl bg-primary flex items-center justify-center">
-          <Activity className="w-5 h-5 text-primary-foreground" />
-        </div>
+        <Logo className="w-8 h-8" />
         <h1 className="font-bold text-xl tracking-tight text-foreground">Pulihku</h1>
       </div>
       

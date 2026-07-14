@@ -2,8 +2,10 @@
 
 import { createContext, useContext, useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
+import { supabase } from "@/lib/supabase";
 
 type UserData = {
+  id: string;
   name: string;
   startDate: string;
   hasCompletedOnboarding: boolean;
@@ -48,7 +50,9 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   }, [user, pathname, isLoading, router]);
 
   const login = (name: string, answers?: Record<string, string | string[]>) => {
+    const id = crypto.randomUUID();
     const newUser: UserData = {
+      id,
       name,
       startDate: new Date().toISOString(),
       hasCompletedOnboarding: true,
@@ -58,6 +62,19 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     };
     localStorage.setItem("pulihku_user", JSON.stringify(newUser));
     setUser(newUser);
+
+    // Sync to Supabase
+    supabase.from("users_pemulihan").insert({
+      id,
+      name,
+      start_date: newUser.startDate,
+      relapse_count: 0,
+      avatar: "🌱",
+      answers,
+    }).then(({ error }) => {
+      if (error) console.error("Error saving to Supabase:", error);
+    });
+
     router.push("/");
   };
 
@@ -76,6 +93,18 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     };
     localStorage.setItem("pulihku_user", JSON.stringify(updatedUser));
     setUser(updatedUser);
+
+    // Sync to Supabase
+    supabase
+      .from("users_pemulihan")
+      .update({ 
+        start_date: updatedUser.startDate, 
+        relapse_count: updatedUser.relapseCount 
+      })
+      .eq("id", user.id)
+      .then(({ error }) => {
+        if (error) console.error("Error updating relapse in Supabase:", error);
+      });
   };
 
   const updateProfile = (name: string, avatar: string) => {
@@ -83,6 +112,15 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     const updatedUser = { ...user, name, avatar };
     localStorage.setItem("pulihku_user", JSON.stringify(updatedUser));
     setUser(updatedUser);
+
+    // Sync to Supabase
+    supabase
+      .from("users_pemulihan")
+      .update({ name, avatar })
+      .eq("id", user.id)
+      .then(({ error }) => {
+        if (error) console.error("Error updating profile in Supabase:", error);
+      });
   };
 
   return (

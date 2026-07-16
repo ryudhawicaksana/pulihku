@@ -11,8 +11,6 @@ import { LogOut, Trophy, Target, ShieldCheck, User } from "lucide-react";
 import { toast } from "sonner";
 import { getRankDetails } from "@/lib/ranks";
 
-const AVATARS = ["🌱", "🌿", "🌳", "🌲", "👑", "🦁", "🦅", "⚔️", "🛡️", "🔥"];
-
 export default function ProfilPage() {
   const { user, updateProfile, logout } = useUser();
   const [name, setName] = useState(user?.name || "");
@@ -53,19 +51,51 @@ export default function ProfilPage() {
               <div className="space-y-4">
                 <label className="text-sm font-medium">Pilih Avatar</label>
                 <div className="flex flex-wrap gap-3">
-                  {AVATARS.map((emoji) => (
-                    <button
-                      key={emoji}
-                      onClick={() => setAvatar(emoji)}
-                      className={`w-14 h-14 text-2xl flex items-center justify-center rounded-2xl transition-all ${
-                        avatar === emoji 
-                          ? "bg-primary text-primary-foreground scale-110 shadow-lg shadow-primary/30" 
-                          : "bg-secondary hover:bg-secondary/70 grayscale hover:grayscale-0"
-                      }`}
-                    >
-                      {emoji}
-                    </button>
-                  ))}
+                  {/* 3 Avatar Gratis */}
+                  {["🌱", "🌿", "🌳"].map((emoji) => {
+                    const isUnlocked = emoji === "🌱" || 
+                      (emoji === "🌿" && ["Tunas", "Akar Kuat", "Pohon Kokoh", "Hutan Raksasa"].includes(rankName)) ||
+                      (emoji === "🌳" && ["Akar Kuat", "Pohon Kokoh", "Hutan Raksasa"].includes(rankName));
+
+                    return (
+                      <button
+                        key={emoji}
+                        disabled={!isUnlocked}
+                        onClick={() => setAvatar(emoji)}
+                        className={`w-14 h-14 text-2xl flex items-center justify-center rounded-2xl transition-all relative ${
+                          !isUnlocked
+                            ? "bg-secondary/40 opacity-40 cursor-not-allowed grayscale"
+                            : avatar === emoji 
+                            ? "bg-primary text-primary-foreground scale-110 shadow-lg shadow-primary/30" 
+                            : "bg-secondary hover:bg-secondary/70"
+                        }`}
+                      >
+                        {emoji}
+                        {!isUnlocked && (
+                          <span className="absolute -bottom-1 -right-1 bg-background border rounded-full p-0.5 text-[8px] font-black">
+                            🔒
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+
+                  {/* Avatar Premium Hasil Pembelian Toko */}
+                  {(user.unlockedAvatars || [])
+                    .filter((emoji) => !["🌱", "🌿", "🌳"].includes(emoji))
+                    .map((emoji) => (
+                      <button
+                        key={emoji}
+                        onClick={() => setAvatar(emoji)}
+                        className={`w-14 h-14 text-2xl flex items-center justify-center rounded-2xl transition-all ${
+                          avatar === emoji 
+                            ? "bg-primary text-primary-foreground scale-110 shadow-lg shadow-primary/30" 
+                            : "bg-secondary hover:bg-secondary/70"
+                        }`}
+                      >
+                        {emoji}
+                      </button>
+                    ))}
                 </div>
               </div>
 

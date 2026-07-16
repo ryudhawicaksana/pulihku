@@ -14,14 +14,17 @@ type Message = {
 };
 
 export default function AIPage() {
+  const { user } = useUser();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Load chat history from localStorage on mount
+  // Load chat history from localStorage on mount/user change
   useEffect(() => {
-    const saved = localStorage.getItem("pulihku_ai_messages");
+    if (!user) return;
+    const storageKey = `pulihku_ai_messages_${user.id}`;
+    const saved = localStorage.getItem(storageKey);
     if (saved) {
       try {
         setMessages(JSON.parse(saved));
@@ -33,18 +36,19 @@ export default function AIPage() {
         {
           id: 1,
           role: "ai",
-          content: "Halo! Aku AI Sahabat Pulih. Aku di sini untuk mendukungmu. Apa yang sedang kamu rasakan hari ini? Jika kamu sedang merasakan dorongan yang kuat, beri tahu aku.",
+          content: `Halo! Aku AI Sahabat Pulih. Aku di sini untuk mendukungmu, ${user.name}. Apa yang sedang kamu rasakan hari ini? Jika kamu sedang merasakan dorongan yang kuat, beri tahu aku.`,
         }
       ]);
     }
-  }, []);
+  }, [user]);
 
   // Save chat history to localStorage whenever messages change
   useEffect(() => {
-    if (messages.length > 0) {
-      localStorage.setItem("pulihku_ai_messages", JSON.stringify(messages));
+    if (user && messages.length > 0) {
+      const storageKey = `pulihku_ai_messages_${user.id}`;
+      localStorage.setItem(storageKey, JSON.stringify(messages));
     }
-  }, [messages]);
+  }, [messages, user]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });

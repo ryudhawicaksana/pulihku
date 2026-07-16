@@ -17,6 +17,10 @@ CREATE TABLE IF NOT EXISTS users_pemulihan (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Tambahkan kolom xp dan best_streak jika tabel users_pemulihan sudah ada sebelumnya
+ALTER TABLE users_pemulihan ADD COLUMN IF NOT EXISTS xp INT DEFAULT 0;
+ALTER TABLE users_pemulihan ADD COLUMN IF NOT EXISTS best_streak INT DEFAULT 0;
+
 -- Mengaktifkan RLS pada tabel users_pemulihan
 ALTER TABLE users_pemulihan ENABLE ROW LEVEL SECURITY;
 

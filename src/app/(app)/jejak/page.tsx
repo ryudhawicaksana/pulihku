@@ -27,16 +27,42 @@ export default function JejakPulih() {
   const [mood, setMood] = useState<number | null>(null);
   const [moodNote, setMoodNote] = useState("");
   const [moodHistory, setMoodHistory] = useState<{ date: string; emoji: number; note: string }[]>([]);
+  const [dailyLogs, setDailyLogs] = useState<any[]>([]);
 
-  // Load mood and mood history on mount
+  const fetchDailyLogs = async () => {
+    if (!user) return;
+    try {
+      const { data, error } = await supabase
+        .from("users_daily_logs")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("log_date", { ascending: true });
+
+      if (!error && data) {
+        setDailyLogs(data);
+        
+        // Map logs to mood history display format
+        const history = data
+          .filter(log => log.mood_score !== null)
+          .map(log => ({
+            date: new Date(log.log_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }),
+            emoji: log.mood_score - 1,
+            note: log.notes || ""
+          }))
+          .reverse();
+        setMoodHistory(history);
+      }
+    } catch (err) {
+      console.error("Gagal memuat log harian:", err);
+    }
+  };
+
   useEffect(() => {
     const storedMood = localStorage.getItem("pulihku_daily_mood");
     if (storedMood) {
       setMood(parseInt(storedMood));
     }
-    if (user?.answers?.mood_history) {
-      setMoodHistory(user.answers.mood_history as any);
-    }
+    fetchDailyLogs();
   }, [user]);
 
   const streak = user?.startDate ? differenceInDays(new Date(), parseISO(user.startDate)) : 0;
@@ -46,12 +72,12 @@ export default function JejakPulih() {
 
   // Brain Recovery Goal logic based on user answers
   const frequency = user?.answers?.frequency as string || "weekly";
-  const history = user?.answers?.history as string || "first_time";
+  const historyAnswer = user?.answers?.history as string || "first_time";
 
   let targetDays = 60;
-  if (frequency === "daily" || history === "tried_failed") {
+  if (frequency === "daily" || historyAnswer === "tried_failed") {
     targetDays = 90;
-  } else if (frequency === "weekly" || history === "long_streak") {
+  } else if (frequency === "weekly" || historyAnswer === "long_streak") {
     targetDays = 60;
   } else {
     targetDays = 30;
@@ -59,48 +85,55 @@ export default function JejakPulih() {
 
   const recoveryScore = Math.min(100, Math.round((streak / targetDays) * 100));
 
-  // Dynamic Chart Data for clean days and relapses (last 12 days simulation)
-  const lineChartData = [
-    { name: "H 1", bersih: streak > 0 ? 1 : 0 },
-    { name: "H 2", bersih: streak > 1 ? 2 : 0 },
-    { name: "H 3", bersih: streak > 2 ? 3 : 0 },
-    { name: "H 4", bersih: streak > 3 ? 4 : 0 },
-    { name: "H 5", bersih: streak > 4 ? 5 : 0 },
-    { name: "H 6", bersih: streak > 5 ? 6 : 0 },
-    { name: "H 7", bersih: streak > 6 ? 7 : 0 },
-    { name: "H 8", bersih: streak > 7 ? 8 : 0 },
-    { name: "H 9", bersih: streak > 8 ? 9 : 0 },
-    { name: "H 10", bersih: streak > 9 ? 10 : 0 },
-    { name: "H 11", bersih: streak > 10 ? 11 : 0 },
-    { name: "H 12", bersih: streak },
-  ];
+  // Dynamic Chart Data: Generate last 7 days trend based on real dailyLogs
+  const lineChartData = Array.from({ length: 7 }).map((_, i) => {
+    const d = new Date();
+    d.setDate(d.getDate() - (6 - i));
+    const dateStr = d.toISOString().split("T")[0];
+    const dayName = d.toLocaleDateString('id-ID', { weekday: 'short' });
+    
+    const log = dailyLogs.find(l => l.log_date === dateStr);
+    
+    let dayStreak = 0;
+    const userStart = user?.startDate ? parseISO(user.startDate) : new Date();
+    if (d >= userStart) {
+      const lastRelapseLog = dailyLogs
+        .filter(l => !l.clean_status && new Date(l.log_date) <= d)
+        .sort((a, b) => new Date(b.log_date).getTime() - new Date(a.log_date).getTime())[0];
+      
+      const referenceDate = lastRelapseLog ? new Date(lastRelapseLog.log_date) : userStart;
+      dayStreak = Math.max(0, differenceInDays(d, referenceDate));
+    }
 
-  // Accurate monthly stats based on user registration date
+    return {
+      name: dayName,
+      bersih: dayStreak,
+      mood: log && log.mood_score ? log.mood_score : 3,
+    };
+  });
+
+  // Dynamic Chart Data: Monthly comparison from real dailyLogs
   const barChartData = Array.from({ length: 6 }).map((_, i) => {
     const d = new Date();
     d.setMonth(d.getMonth() - (5 - i));
     const monthName = d.toLocaleString('id-ID', { month: 'short' });
+    const yearMonth = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
     
-    const userStart = user?.startDate ? parseISO(user.startDate) : new Date();
+    // Filter logs belonging to this month
+    const monthLogs = dailyLogs.filter(l => l.log_date.startsWith(yearMonth));
     
-    // Start and End of this month slot
-    const monthStart = new Date(d.getFullYear(), d.getMonth(), 1);
-    const monthEnd = new Date(d.getFullYear(), d.getMonth() + 1, 0);
-    
-    let bersih = 0;
-    let relapse = 0;
-    
-    // Only show stats if this month is during or after the user's registration
-    if (monthEnd >= userStart) {
-      const isCurrentMonth = i === 5;
-      bersih = isCurrentMonth ? streak : Math.max(0, differenceInDays(monthEnd, userStart));
-      relapse = isCurrentMonth ? totalRelapse : 0;
-    }
-    
+    const relapseCount = monthLogs.filter(l => !l.clean_status).length;
+    const cleanCount = monthLogs.filter(l => l.clean_status).length;
+
+    // Fallback: If no logs recorded for the month yet, show current streak / estimated clean days
+    const isCurrentMonth = i === 5;
+    const finalClean = monthLogs.length > 0 ? cleanCount : (isCurrentMonth ? streak : 30);
+    const finalRelapse = monthLogs.length > 0 ? relapseCount : (isCurrentMonth ? totalRelapse : 0);
+
     return {
       name: monthName,
-      bersih: Math.max(0, bersih),
-      relapse: Math.max(0, relapse),
+      bersih: finalClean,
+      relapse: finalRelapse,
     };
   });
 
@@ -109,35 +142,30 @@ export default function JejakPulih() {
       toast.error("Silakan pilih emoji mood Anda terlebih dahulu.");
       return;
     }
+    if (!user) return;
 
-    const todayStr = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
-    
-    const newEntry = {
-      date: todayStr,
-      emoji: mood,
-      note: moodNote.trim()
-    };
+    const todayStr = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
 
-    const updatedHistory = [newEntry, ...moodHistory.filter(h => h.date !== todayStr)];
-    setMoodHistory(updatedHistory);
-    
-    if (user) {
-      const updatedAnswers = { ...user.answers, mood_history: updatedHistory };
+    try {
       const { error } = await supabase
-        .from("users_pemulihan")
-        .update({ answers: updatedAnswers })
-        .eq("id", user.id);
+        .from("users_daily_logs")
+        .upsert({
+          user_id: user.id,
+          log_date: todayStr,
+          clean_status: true, // Defaulting to clean when logging mood
+          mood_score: mood + 1, // Store 1-5 instead of 0-4 index
+          notes: moodNote.trim()
+        }, { onConflict: "user_id, log_date" });
 
-      if (error) {
-        console.error("Error syncing mood to Supabase:", error);
-        toast.error("Gagal menyimpan mood ke server.");
-      } else {
-        const updatedUser = { ...user, answers: updatedAnswers };
-        localStorage.setItem("pulihku_user", JSON.stringify(updatedUser));
-        localStorage.setItem("pulihku_daily_mood", mood.toString());
-        toast.success("Mood harian & catatan jurnal Anda berhasil disimpan!");
-        setMoodNote("");
-      }
+      if (error) throw error;
+
+      localStorage.setItem("pulihku_daily_mood", mood.toString());
+      toast.success("Mood harian & catatan jurnal Anda berhasil disimpan!");
+      setMoodNote("");
+      fetchDailyLogs();
+    } catch (err: any) {
+      console.error("Error saving mood to Supabase:", err);
+      toast.error("Gagal menyimpan mood ke server.");
     }
   };
 

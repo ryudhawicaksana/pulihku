@@ -245,7 +245,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
     toast.error(`Relapse tercatat! Streak di-reset. XP Anda berkurang -${penalty} XP!`);
 
-    // Sync to Supabase
+    // Sync to Supabase - users_pemulihan
     supabase
       .from("users_pemulihan")
       .update({ 
@@ -257,6 +257,19 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       .eq("id", user.id)
       .then(({ error }) => {
         if (error) console.error("Error updating relapse in Supabase:", error);
+      });
+
+    // Log relapse status to users_daily_logs table
+    const todayISO = new Date().toISOString().split("T")[0];
+    supabase
+      .from("users_daily_logs")
+      .upsert({
+        user_id: user.id,
+        log_date: todayISO,
+        clean_status: false,
+      }, { onConflict: "user_id, log_date" })
+      .then(({ error }) => {
+        if (error) console.error("Error logging relapse in users_daily_logs:", error);
       });
   };
 

@@ -4,7 +4,8 @@ import { useState, useRef, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Bot, Send, User, Loader2 } from "lucide-react";
+import { Bot, Send, User, Loader2, Trash2 } from "lucide-react";
+import { toast } from "sonner";
 
 type Message = {
   id: number;
@@ -13,16 +14,37 @@ type Message = {
 };
 
 export default function AIPage() {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: 1,
-      role: "ai",
-      content: "Halo! Aku AI Sahabat Pulih. Aku di sini untuk mendukungmu. Apa yang sedang kamu rasakan hari ini? Jika kamu sedang merasakan dorongan yang kuat, beri tahu aku.",
-    }
-  ]);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Load chat history from localStorage on mount
+  useEffect(() => {
+    const saved = localStorage.getItem("pulihku_ai_messages");
+    if (saved) {
+      try {
+        setMessages(JSON.parse(saved));
+      } catch (e) {
+        console.error("Gagal memuat riwayat obrolan:", e);
+      }
+    } else {
+      setMessages([
+        {
+          id: 1,
+          role: "ai",
+          content: "Halo! Aku AI Sahabat Pulih. Aku di sini untuk mendukungmu. Apa yang sedang kamu rasakan hari ini? Jika kamu sedang merasakan dorongan yang kuat, beri tahu aku.",
+        }
+      ]);
+    }
+  }, []);
+
+  // Save chat history to localStorage whenever messages change
+  useEffect(() => {
+    if (messages.length > 0) {
+      localStorage.setItem("pulihku_ai_messages", JSON.stringify(messages));
+    }
+  }, [messages]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -32,7 +54,7 @@ export default function AIPage() {
     scrollToBottom();
   }, [messages, isTyping]);
 
-  const handleSend = (e: React.FormEvent) => {
+  const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim()) return;
 
@@ -42,49 +64,87 @@ export default function AIPage() {
       content: input,
     };
 
-    setMessages((prev) => [...prev, userMessage]);
+    const updatedMessages = [...messages, userMessage];
+    setMessages(updatedMessages);
     setInput("");
     setIsTyping(true);
 
-    // Mock AI response delay
-    setTimeout(() => {
-      let aiResponseText = "Aku mengerti dan aku selalu ada di sini untuk mendengarkan. Teruslah berjuang langkah demi langkah!";
-      const lowerInput = userMessage.content.toLowerCase();
-      
-      if (lowerInput.includes("stres") || lowerInput.includes("berat") || lowerInput.includes("pusing")) {
-        aiResponseText = "Stres memang sering menjadi pemicu utama. Mari kita ambil napas sejenak. Tarik napas dalam 4 hitungan, tahan 4 hitungan, dan buang perlahan. Apakah kamu ingin mencoba teknik relaksasi cepat bersamaku?";
-      } else if (lowerInput.includes("relapse") || lowerInput.includes("jatuh") || lowerInput.includes("gagal")) {
-        aiResponseText = "Tidak apa-apa, setiap perjalanan pasti ada kerikilnya. Jangan terlalu keras pada dirimu sendiri. Ingat, sebuah relapse tidak menghapus semua progres yang telah kamu buat. Apa yang membuatmu terpicu kali ini?";
-      } else if (lowerInput.includes("halo") || lowerInput.includes("hai") || lowerInput.includes("pagi")) {
-        aiResponseText = "Halo! Sangat senang mendengarmu. Bagaimana kabarmu hari ini?";
-      } else if (lowerInput.includes("godaan") || lowerInput.includes("ingin") || lowerInput.includes("pengen")) {
-        aiResponseText = "Tarik napas dalam-dalam. Godaan itu seperti ombak yang datang, dan pasti akan pergi lagi. Jangan dilawan, cukup diamati. Ayo lakukan push-up 10x atau minum segelas air sekarang juga untuk memecah fokusmu!";
-      } else if (lowerInput.includes("level") || lowerInput.includes("tingkat")) {
-        if (lowerInput.includes("tertinggi") || lowerInput.includes("maksimal") || lowerInput.includes("paling tinggi")) {
-          aiResponseText = "Level tertinggi di Pulihku adalah **Hutan Raksasa**. Dibutuhkan streak lebih dari 365 hari (1 tahun) tanpa henti untuk mencapainya. Di tahap ini, fondasi otakmu sudah benar-benar terbentuk baru!";
-        } else {
-          aiResponseText = "Di Pulihku ada 5 tahapan level: Benih (0-7 hari), Tunas (8-30 hari), Akar Kuat (31-90 hari), Pohon Kokoh (91-365 hari), dan Hutan Raksasa (>365 hari). Kamu saat ini di level Benih. Terus bertumbuh ya!";
-        }
-      } else if (lowerInput.includes("fitur") || lowerInput.includes("pulihku")) {
-        aiResponseText = "Pulihku punya beberapa fitur andalan untukmu: Jejak Pulih (untuk melacak hari), Akademi (untuk belajar neurosains kecanduan), Komunitas (berbagi secara anonim), Safe Browse (memblokir situs), dan tentu saja aku, AI Sahabatmu!";
+    try {
+      const response = await fetch("/api/chat", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          messages: updatedMessages.map((msg) => ({
+            role: msg.role,
+            content: msg.content,
+          })),
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Gagal memproses obrolan.");
       }
 
       const aiMessage: Message = {
         id: Date.now() + 1,
         role: "ai",
-        content: aiResponseText,
+        content: data.text,
       };
-      
+
       setMessages((prev) => [...prev, aiMessage]);
+    } catch (error: any) {
+      console.error("AI chat error:", error);
+      toast.error(error.message || "Gagal terhubung ke AI. Menampilkan respons lokal cadangan.");
+      
+      // Fallback response if API fails/is not configured
+      setTimeout(() => {
+        const aiMessage: Message = {
+          id: Date.now() + 1,
+          role: "ai",
+          content: "Maaf, saat ini koneksi ke server AI terputus. Tetaplah bernapas dalam-dalam, alihkan fokusmu dengan minum air putih atau lakukan olahraga ringan sejenak. Aku tetap mendukungmu!",
+        };
+        setMessages((prev) => [...prev, aiMessage]);
+      }, 1000);
+    } finally {
       setIsTyping(false);
-    }, 1500);
+    }
+  };
+
+  const handleClearHistory = () => {
+    if (confirm("Apakah kamu yakin ingin menghapus semua riwayat percakapan dengan AI?")) {
+      const initialMessage: Message = {
+        id: 1,
+        role: "ai",
+        content: "Halo! Aku AI Sahabat Pulih. Aku di sini untuk mendukungmu. Apa yang sedang kamu rasakan hari ini? Jika kamu sedang merasakan dorongan yang kuat, beri tahu aku.",
+      };
+      setMessages([initialMessage]);
+      localStorage.setItem("pulihku_ai_messages", JSON.stringify([initialMessage]));
+      toast.success("Riwayat percakapan berhasil dihapus.");
+    }
   };
 
   return (
     <div className="flex flex-col h-[calc(100vh-8rem)] animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold tracking-tight mb-2">AI Sahabat Pulih</h1>
-        <p className="text-muted-foreground text-lg">Asisten pribadi yang siap mendengar dan membantu tanpa menghakimi.</p>
+      <div className="flex justify-between items-center mb-6">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight mb-2">AI Sahabat Pulih</h1>
+          <p className="text-muted-foreground text-lg">Asisten pribadi yang siap mendengar dan membantu tanpa menghakimi.</p>
+        </div>
+        {messages.length > 1 && (
+          <Button 
+            variant="outline" 
+            size="icon" 
+            className="rounded-full text-destructive border-destructive/20 hover:bg-destructive/10"
+            onClick={handleClearHistory}
+            title="Hapus Riwayat Chat"
+          >
+            <Trash2 className="w-5 h-5" />
+          </Button>
+        )}
       </div>
 
       <Card className="flex-1 flex flex-col overflow-hidden">
@@ -104,7 +164,7 @@ export default function AIPage() {
                   <Bot className="w-6 h-6 text-primary" />
                 )}
               </div>
-              <div className={`p-4 rounded-2xl text-foreground ${
+              <div className={`p-4 rounded-2xl text-foreground whitespace-pre-wrap ${
                 msg.role === "user" 
                   ? "bg-primary text-primary-foreground rounded-tr-sm" 
                   : "bg-secondary rounded-tl-sm"
@@ -152,3 +212,4 @@ export default function AIPage() {
     </div>
   );
 }
+

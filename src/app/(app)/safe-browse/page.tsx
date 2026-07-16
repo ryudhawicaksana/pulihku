@@ -6,24 +6,32 @@ import { Button } from "@/components/ui/button";
 import { Shield, ShieldCheck, GlobeLock, AlertTriangle, Download, Info } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { useUser } from "@/components/user-provider";
+import { supabase } from "@/lib/supabase";
 
 export default function SafeBrowsePage() {
+  const { user } = useUser();
   const [customBlocks, setCustomBlocks] = useState<string[]>([]);
   const [newDomain, setNewDomain] = useState("");
   const [isExtensionActive, setIsExtensionActive] = useState(false);
   const [safeSearchEnabled, setSafeSearchEnabled] = useState(true);
 
-  // Load initial custom blocks from localStorage on mount
+  // Load initial custom blocks from localStorage / Supabase on mount
   useEffect(() => {
-    const stored = localStorage.getItem("pulihku_custom_blocks");
-    if (stored) {
-      setCustomBlocks(JSON.parse(stored));
+    if (user?.answers?.custom_blocks) {
+      setCustomBlocks(user.answers.custom_blocks as string[]);
+      localStorage.setItem("pulihku_custom_blocks", JSON.stringify(user.answers.custom_blocks));
     } else {
-      const defaultBlocks = ["twitter.com", "instagram.com"];
-      setCustomBlocks(defaultBlocks);
-      localStorage.setItem("pulihku_custom_blocks", JSON.stringify(defaultBlocks));
+      const stored = localStorage.getItem("pulihku_custom_blocks");
+      if (stored) {
+        setCustomBlocks(JSON.parse(stored));
+      } else {
+        const defaultBlocks = ["twitter.com", "instagram.com"];
+        setCustomBlocks(defaultBlocks);
+        localStorage.setItem("pulihku_custom_blocks", JSON.stringify(defaultBlocks));
+      }
     }
-  }, []);
+  }, [user]);
 
   // Listen for replies from the content script
   useEffect(() => {
@@ -67,7 +75,34 @@ export default function SafeBrowsePage() {
     }
   }, [customBlocks, safeSearchEnabled, isExtensionActive]);
 
-  const addBlock = (e: React.FormEvent) => {
+  const syncToSupabase = async (blocks: string[]) => {
+    if (!user) return;
+    try {
+      const updatedAnswers = {
+        ...user.answers,
+        custom_blocks: blocks
+      };
+
+      const { error } = await supabase
+        .from("users_pemulihan")
+        .update({ answers: updatedAnswers })
+        .eq("id", user.id);
+
+      if (error) throw error;
+
+      // Update local storage user profile cache
+      const storedUser = localStorage.getItem("pulihku_user");
+      if (storedUser) {
+        const u = JSON.parse(storedUser);
+        u.answers = updatedAnswers;
+        localStorage.setItem("pulihku_user", JSON.stringify(u));
+      }
+    } catch (err) {
+      console.error("Gagal menyelaraskan daftar blokir ke Supabase:", err);
+    }
+  };
+
+  const addBlock = async (e: React.FormEvent) => {
     e.preventDefault();
     const clean = newDomain.trim().toLowerCase().replace(/^(https?:\/\/)?(www\.)?/, "");
     if (!clean) return;
@@ -79,12 +114,14 @@ export default function SafeBrowsePage() {
     setCustomBlocks(updated);
     localStorage.setItem("pulihku_custom_blocks", JSON.stringify(updated));
     setNewDomain("");
+    await syncToSupabase(updated);
   };
 
-  const removeBlock = (domain: string) => {
+  const removeBlock = async (domain: string) => {
     const updated = customBlocks.filter(b => b !== domain);
     setCustomBlocks(updated);
     localStorage.setItem("pulihku_custom_blocks", JSON.stringify(updated));
+    await syncToSupabase(updated);
   };
 
   return (

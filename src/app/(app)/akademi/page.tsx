@@ -93,7 +93,7 @@ export default function AkademiPage() {
       title: "Your Brain on Porn: Neurobiology of Addiction",
       desc: "Penjelasan profesional medis mengenai bagaimana kecanduan visual merusak jalur saraf dopamin dan prefrontal cortex.",
       url: "https://www.youtube.com/embed/FyVaFel5Zsw?autoplay=0",
-      duration: "12:04"
+      duration: "1:56"
     }
   ];
 

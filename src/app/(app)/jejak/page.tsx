@@ -70,6 +70,34 @@ export default function JejakPulih() {
   const successRate = Math.max(0, 100 - (totalRelapse * 4));
   const bestStreak = Math.max(user?.bestStreak || 0, streak);
 
+  const [timeLeft, setTimeLeft] = useState("");
+
+  useEffect(() => {
+    if (!user?.startDate) return;
+
+    const updateCountdown = () => {
+      const start = parseISO(user.startDate);
+      const nextMilestone = new Date(start.getTime() + (streak + 1) * 24 * 60 * 60 * 1000);
+      const now = new Date();
+      const diffMs = nextMilestone.getTime() - now.getTime();
+
+      if (diffMs <= 0) {
+        setTimeLeft("Streak berikutnya siap!");
+        return;
+      }
+
+      const hours = Math.floor(diffMs / (1000 * 60 * 60));
+      const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((diffMs % (1000 * 60)) / 1000);
+
+      setTimeLeft(`${hours}j ${minutes}m ${seconds}d`);
+    };
+
+    updateCountdown();
+    const interval = setInterval(updateCountdown, 1000);
+    return () => clearInterval(interval);
+  }, [user?.startDate, streak]);
+
   // Brain Recovery Goal logic based on user answers
   const frequency = user?.answers?.frequency as string || "weekly";
   const historyAnswer = user?.answers?.history as string || "first_time";
@@ -125,10 +153,8 @@ export default function JejakPulih() {
     const relapseCount = monthLogs.filter(l => !l.clean_status).length;
     const cleanCount = monthLogs.filter(l => l.clean_status).length;
 
-    // Fallback: If no logs recorded for the month yet, show current streak / estimated clean days
-    const isCurrentMonth = i === 5;
-    const finalClean = monthLogs.length > 0 ? cleanCount : (isCurrentMonth ? streak : 30);
-    const finalRelapse = monthLogs.length > 0 ? relapseCount : (isCurrentMonth ? totalRelapse : 0);
+    const finalClean = cleanCount;
+    const finalRelapse = relapseCount;
 
     return {
       name: monthName,
@@ -271,8 +297,8 @@ export default function JejakPulih() {
               </div>
             </div>
             <div className="text-center mt-4">
-              <h4 className="font-bold text-sm">Pencapaian Berjalan</h4>
-              <p className="text-xs text-muted-foreground mt-0.5">Hari ini Anda sedang bertumbuh sehat.</p>
+              <h4 className="font-bold text-xs uppercase tracking-wider text-muted-foreground">Streak Berikutnya</h4>
+              <p className="text-lg font-black text-primary mt-1 font-mono">{timeLeft}</p>
             </div>
           </div>
 

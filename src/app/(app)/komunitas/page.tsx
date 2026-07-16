@@ -59,7 +59,11 @@ export default function KomunitasPage() {
       setIsLoading(true);
       let query = supabase
         .from("komunitas_posts")
-        .select("*");
+        .select(`
+          *,
+          komunitas_comments (id),
+          komunitas_likes (id)
+        `);
 
       if (filter === "latest") {
         query = query.order("created_at", { ascending: false });
@@ -70,8 +74,14 @@ export default function KomunitasPage() {
       const { data: postsData, error } = await query;
       if (error) throw error;
 
+      const formattedPosts = (postsData || []).map((post: any) => ({
+        ...post,
+        likes_count: post.komunitas_likes ? post.komunitas_likes.length : 0,
+        comments_count: post.komunitas_comments ? post.komunitas_comments.length : 0,
+      }));
+
       // If user is authenticated, check which posts the user has liked
-      if (user && postsData) {
+      if (user && formattedPosts.length > 0) {
         const { data: likesData, error: likesError } = await supabase
           .from("komunitas_likes")
           .select("post_id")
@@ -79,7 +89,7 @@ export default function KomunitasPage() {
 
         if (!likesError && likesData) {
           const likedPostIds = new Set(likesData.map((l) => l.post_id));
-          const postsWithLikes = postsData.map((post: any) => ({
+          const postsWithLikes = formattedPosts.map((post: any) => ({
             ...post,
             has_liked: likedPostIds.has(post.id),
           }));
@@ -88,7 +98,7 @@ export default function KomunitasPage() {
         }
       }
 
-      setPosts(postsData || []);
+      setPosts(formattedPosts);
     } catch (error: any) {
       console.error("Gagal memuat postingan:", error);
       toast.error("Gagal memuat postingan komunitas.");

@@ -1,17 +1,69 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogTitle, DialogDescription, DialogHeader, DialogFooter as DialogFooterUI } from "@/components/ui/dialog";
-import { BookOpen, PlayCircle, Clock, Zap, Heart, ShieldAlert, Award, ArrowUpRight } from "lucide-react";
+import { BookOpen, PlayCircle, Clock, Zap, Heart, ShieldAlert, Award, ArrowUpRight, CheckCircle2 } from "lucide-react";
 import { motion } from "framer-motion";
+import { useUser } from "@/components/user-provider";
+import { supabase } from "@/lib/supabase";
+import { toast } from "sonner";
 
 export default function AkademiPage() {
   const [activeModal, setActiveModal] = useState<string | null>(null);
+  const { user, addXp } = useUser();
+  const [completedModules, setCompletedModules] = useState<Set<string>>(new Set());
 
   const closeDialog = () => setActiveModal(null);
+
+  useEffect(() => {
+    const fetchProgress = async () => {
+      if (!user) return;
+      try {
+        const { data, error } = await supabase
+          .from("user_academy_progress")
+          .select("module_id")
+          .eq("user_id", user.id);
+        if (!error && data) {
+          setCompletedModules(new Set(data.map((item) => item.module_id)));
+        }
+      } catch (err) {
+        console.error("Gagal memuat progres akademi:", err);
+      }
+    };
+    fetchProgress();
+  }, [user]);
+
+  const markAsCompleted = async (moduleId: string, xpReward: number = 10) => {
+    if (!user) return;
+    if (completedModules.has(moduleId)) {
+      closeDialog();
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from("user_academy_progress")
+        .insert({ user_id: user.id, module_id: moduleId });
+      
+      if (!error) {
+        setCompletedModules((prev) => {
+          const next = new Set(prev);
+          next.add(moduleId);
+          return next;
+        });
+        addXp(xpReward);
+        toast.success(`Modul berhasil diselesaikan! +${xpReward} XP!`);
+      } else {
+        console.error("Error inserting academy progress:", error.message);
+      }
+    } catch (err) {
+      console.error("Gagal menyimpan progres akademi:", err);
+    }
+    closeDialog();
+  };
 
   const articles = [
     {
@@ -148,6 +200,11 @@ export default function AkademiPage() {
                   <Badge className="absolute top-3 left-3 bg-background border text-[9px] font-black uppercase text-foreground py-0.5 px-2.5">
                     {art.category}
                   </Badge>
+                  {completedModules.has(art.id) && (
+                    <Badge className="absolute top-3 right-3 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 border border-emerald-500/30 text-[9px] font-black uppercase py-0.5 px-2 flex items-center gap-1">
+                      <CheckCircle2 className="w-3.5 h-3.5" /> Selesai
+                    </Badge>
+                  )}
                 </div>
                 <CardHeader className="pb-3">
                   <CardTitle className="text-base font-bold text-foreground leading-snug group-hover:text-primary transition-colors">
@@ -188,6 +245,11 @@ export default function AkademiPage() {
                 <Badge className="absolute bottom-2 right-2 bg-black/75 text-white border-none font-bold text-[9px]">
                   {vid.duration}
                 </Badge>
+                {completedModules.has(vid.id) && (
+                  <Badge className="absolute top-2 left-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 border border-emerald-500/30 text-[9px] font-black uppercase py-0.5 px-2 flex items-center gap-1">
+                    <CheckCircle2 className="w-3.5 h-3.5" /> Selesai
+                  </Badge>
+                )}
               </div>
               <div className="flex flex-col justify-between p-5">
                 <div className="space-y-2">
@@ -250,8 +312,8 @@ export default function AkademiPage() {
               {art.content}
             </div>
             <DialogFooterUI className="mt-6">
-              <Button onClick={closeDialog} className="rounded-xl font-bold bg-primary text-foreground hover:bg-primary/95">
-                Selesai Membaca
+              <Button onClick={() => markAsCompleted(art.id, 10)} className="rounded-xl font-bold bg-primary text-foreground hover:bg-primary/95">
+                {completedModules.has(art.id) ? "Selesai Membaca" : "Selesai Membaca (+10 XP)"}
               </Button>
             </DialogFooterUI>
           </DialogContent>
@@ -282,7 +344,9 @@ export default function AkademiPage() {
               </iframe>
             </div>
             <DialogFooterUI className="mt-6">
-              <Button onClick={closeDialog} className="rounded-xl font-bold">Tutup Video</Button>
+              <Button onClick={() => markAsCompleted(vid.id, 15)} className="rounded-xl font-bold bg-primary text-foreground hover:bg-primary/95">
+                {completedModules.has(vid.id) ? "Tutup Video" : "Selesai Menonton (+15 XP)"}
+              </Button>
             </DialogFooterUI>
           </DialogContent>
         </Dialog>

@@ -154,6 +154,22 @@ export default function Dashboard() {
     };
 
     fetchLeaderboard();
+
+    // Subscribe to realtime database changes for users_pemulihan
+    const channel = supabase
+      .channel("realtime-leaderboard")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "users_pemulihan" },
+        () => {
+          fetchLeaderboard();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [streak]);
 
   const handleCompleteChallenge = (ch: typeof CHALLENGE_POOL[0]) => {

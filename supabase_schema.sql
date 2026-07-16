@@ -169,3 +169,31 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 CREATE OR REPLACE TRIGGER trg_update_likes_count
 AFTER INSERT OR DELETE ON komunitas_likes
 FOR EACH ROW EXECUTE FUNCTION update_likes_count();
+
+
+-- 7. TABEL LOG SOS / PANIC BUTTON
+CREATE TABLE IF NOT EXISTS users_sos_logs (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+    action_taken TEXT NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE users_sos_logs ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Pengguna dapat mengelola log SOS sendiri" ON users_sos_logs
+    FOR ALL USING (auth.uid() = user_id);
+
+
+-- 8. TABEL PROGRES BELAJAR AKADEMI
+CREATE TABLE IF NOT EXISTS user_academy_progress (
+    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+    module_id TEXT NOT NULL,
+    completed_at TIMESTAMPTZ DEFAULT NOW(),
+    PRIMARY KEY (user_id, module_id)
+);
+
+ALTER TABLE user_academy_progress ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Pengguna dapat mencatat progres belajar sendiri" ON user_academy_progress
+    FOR ALL USING (auth.uid() = user_id);

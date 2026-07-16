@@ -11,11 +11,12 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { useUser } from "@/components/user-provider";
+import { supabase } from "@/lib/supabase";
 
 export function PanicButton() {
   const [isOpen, setIsOpen] = useState(false);
   const [step, setStep] = useState<"initial" | "breathe" | "options">("initial");
-  const { addXp } = useUser();
+  const { user, addXp } = useUser();
 
   // Breathing states
   const [breathSeconds, setBreathSeconds] = useState(60);
@@ -30,6 +31,21 @@ export function PanicButton() {
     setPhaseTimer(4);
   };
 
+  const logSosAction = async (actionName: string) => {
+    if (!user) return;
+    try {
+      const { error } = await supabase
+        .from("users_sos_logs")
+        .insert({
+          user_id: user.id,
+          action_taken: actionName
+        });
+      if (error) console.error("Error logging SOS action to Supabase:", error);
+    } catch (err) {
+      console.error("Gagal mencatat log SOS:", err);
+    }
+  };
+
   // Timer effect for 60 seconds breathing exercise
   useEffect(() => {
     if (step !== "breathe" || !isOpen) return;
@@ -42,6 +58,7 @@ export function PanicButton() {
           setIsOpen(false);
           toast.success("Hebat! Anda berhasil melewati godaan kritikal. +25 XP!");
           addXp(25);
+          logSosAction("Latihan Pernapasan 1 Menit");
           return 0;
         }
         return prev - 1;
@@ -49,7 +66,7 @@ export function PanicButton() {
     }, 1000);
 
     return () => clearInterval(globalTimer);
-  }, [step, isOpen, addXp]);
+  }, [step, isOpen, addXp, user]);
 
   // Phase animation timer (4s Tarik, 4s Tahan, 4s Hembuskan)
   useEffect(() => {
@@ -76,6 +93,7 @@ export function PanicButton() {
   const handleOptionSelect = (optionName: string, xpReward: number) => {
     toast.success(`Bagus! Lakukan: ${optionName}. +${xpReward} XP!`);
     addXp(xpReward);
+    logSosAction(optionName);
     setIsOpen(false);
   };
 

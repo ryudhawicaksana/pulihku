@@ -144,11 +144,6 @@ export default function KomunitasPage() {
           .eq("user_id", user.id);
 
         if (deleteError) throw deleteError;
-
-        await supabase
-          .from("komunitas_posts")
-          .update({ likes_count: Math.max(0, post.likes_count - 1) })
-          .eq("id", post.id);
       } else {
         // Like
         const { error: insertError } = await supabase
@@ -156,11 +151,6 @@ export default function KomunitasPage() {
           .insert({ post_id: post.id, user_id: user.id });
 
         if (insertError) throw insertError;
-
-        await supabase
-          .from("komunitas_posts")
-          .update({ likes_count: post.likes_count + 1 })
-          .eq("id", post.id);
       }
     } catch (err) {
       console.error("Gagal menyukai postingan:", err);
@@ -267,12 +257,6 @@ export default function KomunitasPage() {
           p.id === selectedPost.id ? { ...p, comments_count: updatedCommentsCount } : p
         )
       );
-
-      // Sync count back to database
-      await supabase
-        .from("komunitas_posts")
-        .update({ comments_count: updatedCommentsCount })
-        .eq("id", selectedPost.id);
 
       toast.success("Komentar terkirim!");
     } catch (err: any) {

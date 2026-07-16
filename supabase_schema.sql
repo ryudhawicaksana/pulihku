@@ -123,3 +123,49 @@ ALTER TABLE users_daily_logs ENABLE ROW LEVEL SECURITY;
 -- Kebijakan Akses untuk users_daily_logs
 CREATE POLICY "Pengguna dapat mengakses log harian sendiri" ON users_daily_logs
     FOR ALL USING (auth.uid() = user_id);
+
+
+-- 6. TRIGGER OTOMATIS SINKRONISASI LIKES & COMMENTS (Mencegah Pelanggaran RLS)
+
+-- Sinkronisasi Comments Count
+CREATE OR REPLACE FUNCTION update_comments_count()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF TG_OP = 'INSERT' THEN
+        UPDATE komunitas_posts 
+        SET comments_count = comments_count + 1
+        WHERE id = NEW.post_id;
+    ELSIF TG_OP = 'DELETE' THEN
+        UPDATE komunitas_posts 
+        SET comments_count = GREATEST(0, comments_count - 1)
+        WHERE id = OLD.post_id;
+    END IF;
+    RETURN NULL;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+CREATE OR REPLACE TRIGGER trg_update_comments_count
+AFTER INSERT OR DELETE ON komunitas_comments
+FOR EACH ROW EXECUTE FUNCTION update_comments_count();
+
+
+-- Sinkronisasi Likes Count
+CREATE OR REPLACE FUNCTION update_likes_count()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF TG_OP = 'INSERT' THEN
+        UPDATE komunitas_posts 
+        SET likes_count = likes_count + 1
+        WHERE id = NEW.post_id;
+    ELSIF TG_OP = 'DELETE' THEN
+        UPDATE komunitas_posts 
+        SET likes_count = GREATEST(0, likes_count - 1)
+        WHERE id = OLD.post_id;
+    END IF;
+    RETURN NULL;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+CREATE OR REPLACE TRIGGER trg_update_likes_count
+AFTER INSERT OR DELETE ON komunitas_likes
+FOR EACH ROW EXECUTE FUNCTION update_likes_count();

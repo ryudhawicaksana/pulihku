@@ -8,12 +8,14 @@ import {
   Bot, 
   BookOpen, 
   Users, 
-  Shield 
+  Shield,
+  ShoppingBag
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useUser } from "@/components/user-provider";
 import { differenceInDays, parseISO } from "date-fns";
 import { Logo } from "@/components/layout/logo";
+import { getRankDetails } from "@/lib/ranks";
 
 const navItems = [
   { name: "Beranda", href: "/", icon: Home },
@@ -21,6 +23,7 @@ const navItems = [
   { name: "AI Sahabat", href: "/ai", icon: Bot },
   { name: "Akademi", href: "/akademi", icon: BookOpen },
   { name: "Komunitas", href: "/komunitas", icon: Users },
+  { name: "Toko Pejuang", href: "/toko", icon: ShoppingBag },
   { name: "Safe Browse", href: "/safe-browse", icon: Shield },
 ];
 
@@ -29,11 +32,7 @@ export function Sidebar() {
   const { user } = useUser();
   
   const streak = user?.startDate ? differenceInDays(new Date(), parseISO(user.startDate)) : 0;
-  let rankName = "Benih";
-  if (streak >= 7 && streak < 30) rankName = "Tunas";
-  if (streak >= 30 && streak < 90) rankName = "Akar Kuat";
-  if (streak >= 90 && streak < 365) rankName = "Pohon Kokoh";
-  if (streak >= 365) rankName = "Hutan Raksasa";
+  const { rankName } = getRankDetails(user?.xp, streak);
 
   return (
     <aside className="hidden md:flex flex-col w-64 border-r border-border bg-card px-4 pt-6 pb-10 h-screen sticky top-0 overflow-y-auto">

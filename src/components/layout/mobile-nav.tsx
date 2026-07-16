@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Activity, Bot, Users, Shield } from "lucide-react";
+import { Home, Activity, Bot, Users, Shield, ShoppingBag } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const mobileItems = [
@@ -10,7 +10,7 @@ const mobileItems = [
   { name: "Jejak", href: "/jejak", icon: Activity },
   { name: "AI", href: "/ai", icon: Bot, isAction: true },
   { name: "Komunitas", href: "/komunitas", icon: Users },
-  { name: "Safe", href: "/safe-browse", icon: Shield },
+  { name: "Toko", href: "/toko", icon: ShoppingBag },
 ];
 
 export function MobileNav() {

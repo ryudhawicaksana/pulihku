@@ -197,3 +197,9 @@ ALTER TABLE user_academy_progress ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Pengguna dapat mencatat progres belajar sendiri" ON user_academy_progress
     FOR ALL USING (auth.uid() = user_id);
+
+
+-- 9. KOLOM TAMBAHAN UNTUK XP SHOP
+ALTER TABLE users_pemulihan ADD COLUMN IF NOT EXISTS shields_count INT DEFAULT 0;
+ALTER TABLE users_pemulihan ADD COLUMN IF NOT EXISTS streak_freezes_count INT DEFAULT 0;
+ALTER TABLE users_pemulihan ADD COLUMN IF NOT EXISTS unlocked_avatars TEXT[] DEFAULT ARRAY['🌱']::text[];

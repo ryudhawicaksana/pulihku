@@ -5,6 +5,7 @@ import { useRouter, usePathname } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { differenceInDays, parseISO } from "date-fns";
 import { toast } from "sonner";
+import { initAnalytics } from "@/lib/analytics";
 
 type UserData = {
   id: string;
@@ -17,6 +18,9 @@ type UserData = {
   answers?: Record<string, string | string[]>;
   xp?: number;
   bestStreak?: number;
+  shieldsCount?: number;
+  streakFreezesCount?: number;
+  unlockedAvatars?: string[];
 };
 
 type UserContextType = {
@@ -27,6 +31,7 @@ type UserContextType = {
   logout: () => Promise<void>;
   recordRelapse: () => void;
   updateProfile: (name: string, avatar: string) => void;
+  updateUserData: (data: Partial<UserData>) => Promise<void>;
   addXp: (amount: number) => void;
   isLoading: boolean;
   isAuthenticated: boolean;
@@ -63,6 +68,9 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
           answers: data.answers,
           xp: data.xp || 0,
           bestStreak: data.best_streak || 0,
+          shieldsCount: data.shields_count || 0,
+          streakFreezesCount: data.streak_freezes_count || 0,
+          unlockedAvatars: data.unlocked_avatars || ["🌱"],
         };
         setUser(userData);
         localStorage.setItem("pulihku_user", JSON.stringify(userData));
@@ -79,6 +87,8 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
+    initAnalytics();
+
     supabase.auth.getSession().then(({ data: { session } }) => {
       handleSession(session);
     });
@@ -209,6 +219,42 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   const recordRelapse = () => {
     if (!user) return;
 
+    // Check if user has active shield (shields_count > 0)
+    if (user.shieldsCount && user.shieldsCount > 0) {
+      const updatedUser = {
+        ...user,
+        shieldsCount: user.shieldsCount - 1,
+      };
+      localStorage.setItem("pulihku_user", JSON.stringify(updatedUser));
+      setUser(updatedUser);
+      toast.success("🛡️ Perisai Pemulihan Aktif! Streak Anda berhasil diselamatkan dari reset!");
+
+      // Sync to Supabase
+      supabase
+        .from("users_pemulihan")
+        .update({ 
+          shields_count: updatedUser.shieldsCount 
+        })
+        .eq("id", user.id)
+        .then(({ error }) => {
+          if (error) console.error("Error updating shield count in Supabase:", error);
+        });
+
+      // Log relapse status to users_daily_logs table
+      const todayISO = new Date().toISOString().split("T")[0];
+      supabase
+        .from("users_daily_logs")
+        .upsert({
+          user_id: user.id,
+          log_date: todayISO,
+          clean_status: false,
+        }, { onConflict: "user_id, log_date" })
+        .then(({ error }) => {
+          if (error) console.error("Error logging relapse in users_daily_logs:", error);
+        });
+      return;
+    }
+
     // Calculate current streak
     const currentStreak = differenceInDays(new Date(), parseISO(user.startDate));
     const newBestStreak = Math.max(user.bestStreak || 0, currentStreak);
@@ -289,6 +335,31 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       });
   };
 
+  const updateUserData = async (data: Partial<UserData>) => {
+    if (!user) return;
+    const updatedUser = { ...user, ...data };
+    localStorage.setItem("pulihku_user", JSON.stringify(updatedUser));
+    setUser(updatedUser);
+
+    const dbPayload: any = {};
+    if (data.name !== undefined) dbPayload.name = data.name;
+    if (data.avatar !== undefined) dbPayload.avatar = data.avatar;
+    if (data.xp !== undefined) dbPayload.xp = data.xp;
+    if (data.bestStreak !== undefined) dbPayload.best_streak = data.bestStreak;
+    if (data.shieldsCount !== undefined) dbPayload.shields_count = data.shieldsCount;
+    if (data.streakFreezesCount !== undefined) dbPayload.streak_freezes_count = data.streakFreezesCount;
+    if (data.unlockedAvatars !== undefined) dbPayload.unlocked_avatars = data.unlockedAvatars;
+
+    const { error } = await supabase
+      .from("users_pemulihan")
+      .update(dbPayload)
+      .eq("id", user.id);
+
+    if (error) {
+      console.error("Error updating user data in Supabase:", error.message);
+    }
+  };
+
   const addXp = (amount: number) => {
     if (!user) return;
 
@@ -335,7 +406,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <UserContext.Provider value={{ user, login, signUpWithEmailPassword, signInWithEmailPassword, logout, recordRelapse, updateProfile, addXp, isLoading, isAuthenticated }}>
+    <UserContext.Provider value={{ user, login, signUpWithEmailPassword, signInWithEmailPassword, logout, recordRelapse, updateProfile, updateUserData, addXp, isLoading, isAuthenticated }}>
       {/* Jika masih loading atau user belum login (tapi bukan di halaman onboarding), jangan render anak-anak untuk mencegah flash konten */}
       {!isLoading && (user || pathname === "/onboarding") ? children : null}
     </UserContext.Provider>

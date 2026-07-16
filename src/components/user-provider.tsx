@@ -6,6 +6,7 @@ import { supabase } from "@/lib/supabase";
 import { differenceInDays, parseISO } from "date-fns";
 import { toast } from "sonner";
 import { initAnalytics } from "@/lib/analytics";
+import { getRankDetails } from "@/lib/ranks";
 
 type UserData = {
   id: string;
@@ -278,12 +279,29 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     const penalty = newRelapseTodayCount === 1 ? 10 : 20;
     const newXp = Math.max(0, (user.xp || 0) - penalty);
 
+    // Verify if new rank allows current avatar (otherwise demote to '🌱')
+    let finalAvatar = user.avatar || "🌱";
+    const { rankName: newRank } = getRankDetails(newXp, 0);
+    
+    const avatarRequirements: Record<string, string[]> = {
+      "🌿": ["Tunas", "Akar Kuat", "Pohon Kokoh", "Hutan Raksasa"],
+      "🪵": ["Akar Kuat", "Pohon Kokoh", "Hutan Raksasa"],
+      "🌳": ["Pohon Kokoh", "Hutan Raksasa"],
+      "🌲": ["Hutan Raksasa"]
+    };
+
+    if (avatarRequirements[finalAvatar] && !avatarRequirements[finalAvatar].includes(newRank)) {
+      finalAvatar = "🌱";
+      toast.warning("Level Anda turun! Avatar tingkat tinggi Anda sebelumnya telah terkunci kembali.");
+    }
+
     const updatedUser = {
       ...user,
       startDate: new Date().toISOString(), // Reset current streak to 0
       relapseCount: (user.relapseCount || 0) + 1,
       xp: newXp,
-      bestStreak: newBestStreak
+      bestStreak: newBestStreak,
+      avatar: finalAvatar
     };
     
     localStorage.setItem("pulihku_user", JSON.stringify(updatedUser));
@@ -298,7 +316,8 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         start_date: updatedUser.startDate, 
         relapse_count: updatedUser.relapseCount,
         xp: updatedUser.xp,
-        best_streak: updatedUser.bestStreak
+        best_streak: updatedUser.bestStreak,
+        avatar: updatedUser.avatar
       })
       .eq("id", user.id)
       .then(({ error }) => {

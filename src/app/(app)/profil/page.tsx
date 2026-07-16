@@ -51,26 +51,42 @@ export default function ProfilPage() {
               <div className="space-y-4">
                 <label className="text-sm font-medium">Pilih Avatar</label>
                 <div className="flex flex-wrap gap-3">
-                  {/* 3 Avatar Gratis */}
-                  {["🌱", "🌿", "🌳"].map((emoji) => {
-                    const isUnlocked = emoji === "🌱" || 
-                      (emoji === "🌿" && ["Tunas", "Akar Kuat", "Pohon Kokoh", "Hutan Raksasa"].includes(rankName)) ||
-                      (emoji === "🌳" && ["Akar Kuat", "Pohon Kokoh", "Hutan Raksasa"].includes(rankName));
+                  {/* Avatar Bonus (Selalu Terbuka) */}
+                  <button
+                    onClick={() => setAvatar("🕊️")}
+                    className={`w-14 h-14 text-2xl flex items-center justify-center rounded-2xl transition-all ${
+                      avatar === "🕊️" 
+                        ? "bg-primary text-primary-foreground scale-110 shadow-lg shadow-primary/30" 
+                        : "bg-secondary hover:bg-secondary/70"
+                    }`}
+                  >
+                    🕊️
+                  </button>
+
+                  {/* 5 Avatar Tingkat Level (Mengunci/Membuka Dinamis) */}
+                  {[
+                    { emoji: "🌱", levels: ["Benih", "Tunas", "Akar Kuat", "Pohon Kokoh", "Hutan Raksasa"] },
+                    { emoji: "🌿", levels: ["Tunas", "Akar Kuat", "Pohon Kokoh", "Hutan Raksasa"] },
+                    { emoji: "🪵", levels: ["Akar Kuat", "Pohon Kokoh", "Hutan Raksasa"] },
+                    { emoji: "🌳", levels: ["Pohon Kokoh", "Hutan Raksasa"] },
+                    { emoji: "🌲", levels: ["Hutan Raksasa"] }
+                  ].map((item) => {
+                    const isUnlocked = item.levels.includes(rankName);
 
                     return (
                       <button
-                        key={emoji}
+                        key={item.emoji}
                         disabled={!isUnlocked}
-                        onClick={() => setAvatar(emoji)}
+                        onClick={() => setAvatar(item.emoji)}
                         className={`w-14 h-14 text-2xl flex items-center justify-center rounded-2xl transition-all relative ${
                           !isUnlocked
                             ? "bg-secondary/40 opacity-40 cursor-not-allowed grayscale"
-                            : avatar === emoji 
+                            : avatar === item.emoji 
                             ? "bg-primary text-primary-foreground scale-110 shadow-lg shadow-primary/30" 
                             : "bg-secondary hover:bg-secondary/70"
                         }`}
                       >
-                        {emoji}
+                        {item.emoji}
                         {!isUnlocked && (
                           <span className="absolute -bottom-1 -right-1 bg-background border rounded-full p-0.5 text-[8px] font-black">
                             🔒
@@ -82,7 +98,7 @@ export default function ProfilPage() {
 
                   {/* Avatar Premium Hasil Pembelian Toko */}
                   {(user.unlockedAvatars || [])
-                    .filter((emoji) => !["🌱", "🌿", "🌳"].includes(emoji))
+                    .filter((emoji) => !["🕊️", "🌱", "🌿", "🪵", "🌳", "🌲"].includes(emoji))
                     .map((emoji) => (
                       <button
                         key={emoji}

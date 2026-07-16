@@ -61,8 +61,8 @@ export default function KomunitasPage() {
         .from("komunitas_posts")
         .select(`
           *,
-          komunitas_comments (id),
-          komunitas_likes (id)
+          komunitas_comments (post_id),
+          komunitas_likes (post_id)
         `);
 
       if (filter === "latest") {

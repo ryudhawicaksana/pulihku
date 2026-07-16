@@ -140,7 +140,7 @@ export default function Dashboard() {
           return {
             name: u.name || "Pejuang",
             avatar: u.avatar || "🌱",
-            streak: Math.max(bestStreak, currentStreak)
+            streak: currentStreak
           };
         });
 

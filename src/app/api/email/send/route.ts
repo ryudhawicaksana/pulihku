@@ -1,16 +1,18 @@
 import { NextResponse } from "next/server";
-import { Resend } from "resend";
+import nodemailer from "nodemailer";
 
 export async function POST(req: Request) {
   try {
-    const resendApiKey = process.env.RESEND_API_KEY;
-    if (!resendApiKey) {
-      // Mock sending email locally if API key is not configured yet
+    const emailUser = process.env.EMAIL_USER;
+    const emailPass = process.env.EMAIL_PASS;
+
+    if (!emailUser || !emailPass) {
+      // Mock sending email locally if credentials are not configured yet
       const body = await req.json().catch(() => ({}));
-      console.log("[Mock Email Sent]:", body);
-      return NextResponse.json({
-        success: true,
-        message: "Simulasi pengiriman email berhasil (RESEND_API_KEY belum terpasang)."
+      console.log("[Mock Email Sent (Nodemailer credentials missing)]:", body);
+      return NextResponse.json({ 
+        success: true, 
+        message: "Simulasi pengiriman email berhasil (EMAIL_USER / EMAIL_PASS belum dikonfigurasi)." 
       });
     }
 
@@ -23,19 +25,27 @@ export async function POST(req: Request) {
       );
     }
 
-    const resend = new Resend(resendApiKey);
-    const data = await resend.emails.send({
-      from: "Pulihku <onboarding@resend.dev>",
+    // Configure Nodemailer Gmail SMTP transporter
+    const transporter = nodemailer.createTransport({
+      service: "gmail",
+      auth: {
+        user: emailUser,
+        pass: emailPass, // App Password (16 characters)
+      },
+    });
+
+    const info = await transporter.sendMail({
+      from: `"Pulihku" <${emailUser}>`,
       to,
       subject,
       html,
     });
 
-    return NextResponse.json({ success: true, data });
+    return NextResponse.json({ success: true, data: info });
   } catch (error: any) {
-    console.error("Error sending email via Resend:", error);
+    console.error("Error sending email via Nodemailer:", error);
     return NextResponse.json(
-      { error: "Terjadi kesalahan saat mengirim email." },
+      { error: error.message || "Terjadi kesalahan saat mengirim email." },
       { status: 500 }
     );
   }

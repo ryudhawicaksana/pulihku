@@ -231,12 +231,11 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       ...answers,
     });
 
-    // Send Welcome Email via Resend API
+    // Send Welcome Email
     triggerEmail(
-      "Selamat Datang di Pulihku!",
+      "Selamat bergabung di Pulihku!",
       `<h1>Halo ${name}!</h1>
-       <p>Selamat bergabung di keluarga besar Pulihku. Anda baru saja menyelesaikan onboarding awal.</p>
-       <p>Kami di sini siap mendampingi Anda melewati perjalanan pemulihan ini secara aman dan pribadi. Manfaatkan fitur-fitur seperti <strong>Panic Button</strong> saat Anda merasa kewalahan, atau mengobrol dengan <strong>AI Sahabat Pulih</strong> kapan saja.</p>
+       <p>Selamat bergabung di Pulihku, terima kasih telah mempercayai kami untuk menemani transformasi kamu.</p>
        <br />
        <p>Salam hangat,<br />Tim Pulihku</p>`
     );

@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Shield, Snowflake, Award, Sparkles, Check } from "lucide-react";
 import { toast } from "sonner";
+import { trackEvent } from "@/lib/analytics";
 
 const PREMIUM_AVATARS = [
   { emoji: "🦁", name: "Singa Emas", desc: "Lambang keberanian menghadapi hasrat.", cost: 300 },
@@ -44,6 +45,7 @@ export default function TokoPage() {
         shieldsCount: shieldsCount + 1,
       });
       toast.success("Berhasil membeli Perisai Pemulihan! +1 Perisai ditambahkan.");
+      trackEvent("item_purchased", { itemName: "Perisai Pemulihan", cost: 1000, currentXp: currentXp - 1000 });
     } catch (err) {
       toast.error("Gagal melakukan pembelian.");
     } finally {
@@ -64,6 +66,7 @@ export default function TokoPage() {
         streakFreezesCount: freezesCount + 1,
       });
       toast.success("Berhasil membeli Streak Freeze! +1 Pengaman ditambahkan.");
+      trackEvent("item_purchased", { itemName: "Streak Freeze", cost: 500, currentXp: currentXp - 500 });
     } catch (err) {
       toast.error("Gagal melakukan pembelian.");
     } finally {
@@ -78,6 +81,7 @@ export default function TokoPage() {
       try {
         await updateUserData({ avatar: emoji });
         toast.success(`Avatar berhasil diubah ke ${emoji}!`);
+        trackEvent("avatar_equipped", { emoji });
       } catch (err) {
         toast.error("Gagal mengganti avatar.");
       } finally {
@@ -99,6 +103,7 @@ export default function TokoPage() {
         avatar: emoji, // Auto-equip on purchase
       });
       toast.success(`Berhasil membeli dan menggunakan avatar ${emoji}!`);
+      trackEvent("item_purchased", { itemName: `Avatar ${emoji}`, cost, currentXp: currentXp - cost });
     } catch (err) {
       toast.error("Gagal membeli avatar.");
     } finally {

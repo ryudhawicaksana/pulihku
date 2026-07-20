@@ -8,9 +8,9 @@ export async function POST(req: Request) {
       // Mock sending email locally if API key is not configured yet
       const body = await req.json().catch(() => ({}));
       console.log("[Mock Email Sent]:", body);
-      return NextResponse.json({ 
-        success: true, 
-        message: "Simulasi pengiriman email berhasil (RESEND_API_KEY belum terpasang)." 
+      return NextResponse.json({
+        success: true,
+        message: "Simulasi pengiriman email berhasil (RESEND_API_KEY belum terpasang)."
       });
     }
 
@@ -25,7 +25,7 @@ export async function POST(req: Request) {
 
     const resend = new Resend(resendApiKey);
     const data = await resend.emails.send({
-      from: "Pulihku <noreply@pulihku.id>",
+      from: "Pulihku <onboarding@resend.dev>",
       to,
       subject,
       html,

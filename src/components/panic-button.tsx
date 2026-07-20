@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/compone
 import { toast } from "sonner";
 import { useUser } from "@/components/user-provider";
 import { supabase } from "@/lib/supabase";
+import { trackEvent } from "@/lib/analytics";
 
 export function PanicButton() {
   const [isOpen, setIsOpen] = useState(false);
@@ -29,6 +30,7 @@ export function PanicButton() {
     setBreathSeconds(60);
     setBreathPhase("Tarik Napas");
     setPhaseTimer(4);
+    trackEvent("sos_button_clicked");
   };
 
   const logSosAction = async (actionName: string) => {
@@ -59,6 +61,7 @@ export function PanicButton() {
           toast.success("Hebat! Anda berhasil melewati godaan kritikal. +25 XP!");
           addXp(25);
           logSosAction("Latihan Pernapasan 1 Menit");
+          trackEvent("sos_action_selected", { action: "Latihan Pernapasan 1 Menit", xpReward: 25 });
           return 0;
         }
         return prev - 1;
@@ -94,6 +97,7 @@ export function PanicButton() {
     toast.success(`Bagus! Lakukan: ${optionName}. +${xpReward} XP!`);
     addXp(xpReward);
     logSosAction(optionName);
+    trackEvent("sos_action_selected", { action: optionName, xpReward });
     setIsOpen(false);
   };
 

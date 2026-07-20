@@ -69,18 +69,19 @@ Proyek ini terbagi menjadi dua bagian utama:
 
 ---
 
-## 🛠️ Cara Menjalankan Proyek Secara Lokal
+## 🛠️ Konfigurasi Produksi di Netlify
 
-1.  **Instalasi Dependensi:**
-    ```bash
-    npm install
-    ```
-2.  **Jalankan Mode Pengembangan:**
-    ```bash
-    npm run dev
-    ```
-3.  **Memuat Ekstensi Pemblokir:**
-    *   Buka Google Chrome / Brave / Edge.
-    *   Akses halaman `chrome://extensions/`.
-    *   Aktifkan tombol **Developer Mode** di kanan atas.
-    *   Klik **Load Unpacked** dan pilih direktori `pulihku-extension`.
+Aplikasi ini berjalan secara penuh di server produksi Netlify. Untuk memastikan seluruh fitur ekosistem berfungsi, pastikan variabel lingkungan berikut telah ditambahkan ke panel **Netlify Environment Variables**:
+
+1.  `RESEND_API_KEY`: Kunci API Resend untuk pengiriman email transaksional nyata.
+2.  `NEXT_PUBLIC_SUPABASE_URL`: URL API endpoint dari proyek Supabase Anda.
+3.  `NEXT_PUBLIC_SUPABASE_ANON_KEY`: Kunci publik anonim untuk autentikasi dan kueri database.
+4.  `HF_API_KEY`: Kunci API Hugging Face untuk memproses obrolan cerdas AI Sahabat Pulih.
+5.  `NEXT_PUBLIC_POSTHOG_KEY`: Kunci analitik PostHog untuk merekam interaksi pengguna.
+
+### 🔌 Memuat Ekstensi Safe Browse di Browser Pengguna:
+*   Unduh file `pulihku-extension.zip` dari halaman Safe Browse.
+*   Ekstrak file `.zip` tersebut di komputer Anda.
+*   Buka browser Google Chrome / Brave / Edge dan akses halaman `chrome://extensions/`.
+*   Aktifkan tombol **Developer Mode** (Mode Pengembang) di kanan atas.
+*   Klik **Load Unpacked** (Muat Ekstensi Tidak Dikemas) dan pilih folder `pulihku-extension` hasil ekstrak tadi.

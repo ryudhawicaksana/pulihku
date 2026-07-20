@@ -5,7 +5,7 @@ import { useRouter, usePathname } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { differenceInDays, parseISO } from "date-fns";
 import { toast } from "sonner";
-import { initAnalytics } from "@/lib/analytics";
+import { initAnalytics, trackEvent } from "@/lib/analytics";
 import { getRankDetails } from "@/lib/ranks";
 
 type UserData = {
@@ -46,6 +46,22 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
+
+  const triggerEmail = async (subject: string, html: string) => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const email = session?.user?.email;
+      if (!email) return;
+
+      await fetch("/api/email/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ to: email, subject, html }),
+      });
+    } catch (e) {
+      console.error("Gagal mengirim email transaksional:", e);
+    }
+  };
 
   const handleSession = async (session: any) => {
     if (session?.user) {
@@ -206,6 +222,25 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     };
     localStorage.setItem("pulihku_user", JSON.stringify(newUser));
     setUser(newUser);
+
+    // Track Onboarding Completed Event in PostHog
+    trackEvent("onboarding_completed", {
+      userId: id,
+      name,
+      age: currentProfile?.age || null,
+      ...answers,
+    });
+
+    // Send Welcome Email via Resend API
+    triggerEmail(
+      "Selamat Datang di Pulihku!",
+      `<h1>Halo ${name}!</h1>
+       <p>Selamat bergabung di keluarga besar Pulihku. Anda baru saja menyelesaikan onboarding awal.</p>
+       <p>Kami di sini siap mendampingi Anda melewati perjalanan pemulihan ini secara aman dan pribadi. Manfaatkan fitur-fitur seperti <strong>Panic Button</strong> saat Anda merasa kewalahan, atau mengobrol dengan <strong>AI Sahabat Pulih</strong> kapan saja.</p>
+       <br />
+       <p>Salam hangat,<br />Tim Pulihku</p>`
+    );
+
     router.push("/");
     return { success: true };
   };
@@ -229,6 +264,22 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       localStorage.setItem("pulihku_user", JSON.stringify(updatedUser));
       setUser(updatedUser);
       toast.success("🛡️ Perisai Pemulihan Aktif! Streak Anda berhasil diselamatkan dari reset!");
+
+      // Track Shield Used Event in PostHog
+      trackEvent("relapse_prevented_by_shield", {
+        userId: user.id,
+        shieldsCountRemaining: updatedUser.shieldsCount,
+      });
+
+      // Send Shield Use Warning Email
+      triggerEmail(
+        "Perisai Pemulihan Aktif - Streak Terselamatkan",
+        `<h1>Halo ${user.name}!</h1>
+         <p>Kami mendeteksi adanya laporan relapse hari ini. Untungnya, <strong>Perisai Pemulihan (Shield)</strong> Anda sedang aktif.</p>
+         <p>Streak hari bersih Anda berhasil diselamatkan dan tidak kembali ke 0. Namun, gunakan kesempatan ini sebagai pengingat untuk tetap waspada. Sisa perisai Anda: ${updatedUser.shieldsCount}.</p>
+         <br />
+         <p>Tetap kuat!<br />Tim Pulihku</p>`
+      );
 
       // Sync to Supabase
       supabase
@@ -308,6 +359,25 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     setUser(updatedUser);
 
     toast.error(`Relapse tercatat! Streak di-reset. XP Anda berkurang -${penalty} XP!`);
+
+    // Track Relapse Event in PostHog
+    trackEvent("relapse_recorded", {
+      userId: user.id,
+      currentStreak,
+      penalty,
+      newXp,
+    });
+
+    // Send Relapse Support Email via Resend API
+    triggerEmail(
+      "Tetap Semangat, Mulai Lagi Hari Ini",
+      `<h1>Halo ${user.name},</h1>
+       <p>Jangan berkecil hati. Mengalami relapse adalah bagian dari proses naik-turun dalam pemulihan.</p>
+       <p>Kami mencatat hari bersih Anda di-reset ke 0 hari, dan XP Anda terpotong sebesar -${penalty} XP. Tapi yang terpenting adalah komitmen Anda hari ini untuk mulai kembali.</p>
+       <p>Cobalah bernapas perlahan, gunakan fitur <strong>Box Breathing</strong> di Panic Button, atau curhat ke <strong>AI Sahabat Pulih</strong>.</p>
+       <br />
+       <p>Kami percaya Anda bisa melakukannya!<br />Tim Pulihku</p>`
+    );
 
     // Sync to Supabase - users_pemulihan
     supabase

@@ -9,7 +9,8 @@ import {
   BookOpen, 
   Users, 
   Shield,
-  ShoppingBag
+  ShoppingBag,
+  Presentation
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useUser } from "@/components/user-provider";
@@ -25,6 +26,7 @@ const navItems = [
   { name: "Komunitas", href: "/komunitas", icon: Users },
   { name: "Toko Pejuang", href: "/toko", icon: ShoppingBag },
   { name: "Safe Browse", href: "/safe-browse", icon: Shield },
+  { name: "Presentasi Slide", href: "/slide", icon: Presentation },
 ];
 
 export function Sidebar() {

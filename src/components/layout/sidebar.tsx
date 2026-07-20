@@ -26,7 +26,6 @@ const navItems = [
   { name: "Komunitas", href: "/komunitas", icon: Users },
   { name: "Toko Pejuang", href: "/toko", icon: ShoppingBag },
   { name: "Safe Browse", href: "/safe-browse", icon: Shield },
-  { name: "Presentasi Slide", href: "/slide", icon: Presentation },
 ];
 
 export function Sidebar() {
